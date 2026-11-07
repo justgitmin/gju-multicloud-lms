@@ -1,1 +1,1 @@
-export function GET(){return Response.json({status:'ok',release:'foundation',learningEnabled:false});}
+export function GET(){return Response.json({status:'ok',release:'learning',learningEnabled:true});}

@@ -1,4 +1,5 @@
 import {PrismaClient} from '@prisma/client';
+import {modules} from '../lib/curriculum.ts';
 import {hashPassword,validPassword} from '../lib/password.mjs';
 const db=new PrismaClient();
 try{
@@ -10,5 +11,6 @@ try{
  await tx.user.create({data:{email,name:'교육 운영자',passwordHash:await hashPassword(password),role:'ADMIN'}});
  await tx.course.upsert({where:{id:'gju-multicloud-2026'},create:{id:'gju-multicloud-2026',title:'AWS·NHN Cloud 멀티클라우드 운영',published:true},update:{}});
  });
+ for(const [moduleIndex,module] of modules.entries()){for(const [i,title] of module.lessons.entries()){const id=`${module.id}-${String(i+1).padStart(2,'0')}`;await db.lesson.upsert({where:{id},create:{id,courseId:'gju-multicloud-2026',title,position:moduleIndex*8+i+1,durationSeconds:module.minutes[i]*60},update:{}});}}
  console.log('Administrator and course initialized.');
 }finally{await db.$disconnect();}

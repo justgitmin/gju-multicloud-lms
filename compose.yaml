@@ -5,6 +5,9 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
       ENABLE_REGISTRATION: ${ENABLE_REGISTRATION:-false}
+      MEDIA_ROOT: /app/media
+    volumes:
+      - ./media:/app/media:ro
     depends_on:
       db:
         condition: service_healthy

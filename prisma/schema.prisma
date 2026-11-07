@@ -82,3 +82,14 @@ model RateLimit {
  expiresAt DateTime
  @@index([expiresAt])
 }
+
+model Playback {
+ id String @id @default(cuid())
+ enrollmentId String
+ lessonId String
+ version Int
+ lastPosition Float
+ lastAt DateTime @default(now())
+ revision Int @default(0)
+ @@unique([enrollmentId,lessonId])
+}

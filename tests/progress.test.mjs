@@ -1,0 +1,12 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {advance,frontierOf,parseRange} from '../lib/progress.mjs';
+const base={position:5,lastPosition:0,frontier:0,elapsed:5,duration:100,completed:false};
+test('normal playback advances contiguous watched time',()=>assert.equal(advance(base).frontier,5));
+test('jumping over unseen time is rejected',()=>assert.throws(()=>advance({...base,position:90}),/SEEK_BLOCKED/));
+test('wall clock gaps do not award unseen video',()=>assert.throws(()=>advance({...base,position:80,elapsed:300}),/SEEK_BLOCKED/));
+test('rewatch is allowed without duplicate progress',()=>assert.deepEqual(advance({...base,position:10,lastPosition:30,frontier:40}),{frontier:40,resume:10,completed:false}));
+test('replay cannot jump from early watched segment into unseen time',()=>assert.throws(()=>advance({...base,position:44,lastPosition:10,frontier:40}),/SEEK_BLOCKED/));
+test('completion at 95 percent unlocks seeking',()=>{assert.equal(advance({...base,position:95,lastPosition:90,frontier:90}).completed,true);assert.equal(advance({...base,position:100,completed:true}).resume,100);});
+test('rejects NaN, negative and out of duration values',()=>{for(const position of [NaN,Infinity,-1,102])assert.throws(()=>advance({...base,position}));});
+test('ranges preserve only the contiguous prefix',()=>{assert.equal(frontierOf([[0,15]]),15);assert.equal(frontierOf([[10,90]]),0);assert.equal(frontierOf(null),0);});
+test('HTTP byte ranges support bounded, open and suffix requests',()=>{assert.deepEqual(parseRange('bytes=0-9',100),{start:0,end:9});assert.deepEqual(parseRange('bytes=50-',100),{start:50,end:99});assert.deepEqual(parseRange('bytes=-10',100),{start:90,end:99});assert.equal(parseRange(null,100),null);for(const header of ['bytes=100-','bytes=50-10','bytes=0-1,3-4','bytes=-0'])assert.throws(()=>parseRange(header,100));});
