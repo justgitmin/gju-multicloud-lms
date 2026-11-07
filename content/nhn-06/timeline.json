@@ -1,0 +1,55 @@
+{
+  "duration": 303.216,
+  "scenes": [
+    {
+      "scene": 1,
+      "title": "웹 서버와 DB 사이의 마지막 연결",
+      "start": 0,
+      "duration": 39.576
+    },
+    {
+      "scene": 2,
+      "title": "내부 도메인과 연결 위치",
+      "start": 39.576,
+      "duration": 40.344
+    },
+    {
+      "scene": 3,
+      "title": "DB 보안 그룹과 인증은 다른 층",
+      "start": 79.92,
+      "duration": 38.64
+    },
+    {
+      "scene": 4,
+      "title": "생성 대기와 운영 설정",
+      "start": 118.56,
+      "duration": 36.936
+    },
+    {
+      "scene": 5,
+      "title": "문제 / 피씨에서 접속 안 되면 장애?",
+      "start": 155.496,
+      "duration": 40.608
+    },
+    {
+      "scene": 6,
+      "title": "최소 쿼리로 연결을 증명하기",
+      "start": 196.104,
+      "duration": 41.16
+    },
+    {
+      "scene": 7,
+      "title": "직접 미션 / AWS와 같은 점·다른 점",
+      "start": 237.264,
+      "duration": 38.16
+    },
+    {
+      "scene": 8,
+      "title": "복습 / 관리형 서비스도 연결 설계 필요",
+      "start": 275.424,
+      "duration": 27.792
+    }
+  ],
+  "voice": "ko-KR-SunHiNeural",
+  "audioReview": "pending"
+}

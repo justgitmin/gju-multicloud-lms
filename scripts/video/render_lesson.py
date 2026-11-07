@@ -50,7 +50,7 @@ async def main():
    if end<=start:continue
    image=Image.new('RGB',(1920,1080),'#f3f6f1');d=ImageDraw.Draw(image)
    d.rectangle((0,0,1920,10),fill='#247156');d.text((100,55),'GJU / CLOUD CAMPUS',font=fonts[26],fill='#204b3d')
-   d.text((1520,55),f'AWS ONLINE  {i+1:02} / {len(lesson["scenes"]):02}',font=fonts[22],fill='#64796b')
+   d.text((1520,55),f'{lesson["id"].upper()}  {i+1:02} / {len(lesson["scenes"]):02}',font=fonts[22],fill='#64796b')
    d.text((100,160),scene['kicker'],font=fonts[26],fill='#b56b16')
    for k,line in enumerate(wrap(d,scene['title'],fonts[68],1700)):d.text((100,220+k*95),line,font=fonts[68],fill='#153a2d')
    if scene.get('visual'):
@@ -71,9 +71,11 @@ async def main():
  last=frame;concat.append(f"file '{last}'\n")
  (out/'frames.txt').write_text(''.join(concat));(out/'audio.txt').write_text(''.join(f"file '{p}'\n" for p in audio))
  subprocess.run(['ffmpeg','-y','-v','error','-f','concat','-safe','0','-i',str(out/'audio.txt'),'-c:a','aac','-b:a','128k',str(out/'narration.m4a')],check=True)
- target=out/f"{lesson['id']}.mp4"
+ target=out/f"{lesson['id']}.rendering.mp4"
+ final=out/f"{lesson['id']}.mp4"
  subprocess.run(['ffmpeg','-y','-v','error','-f','concat','-safe','0','-i',str(out/'frames.txt'),'-i',str(out/'narration.m4a'),'-vf','fps=15,format=yuv420p','-c:v','libx264','-preset','ultrafast','-threads','2','-crf','24','-c:a','copy','-t',str(offset),'-movflags','+faststart',str(target)],check=True)
  (out/f"{lesson['id']}.vtt").write_text('WEBVTT\n\n'+'\n\n'.join(f'{timestamp(s)} --> {timestamp(e)}\n{t}' for s,e,t in cues if e>s))
  (out/'timeline.json').write_text(json.dumps({'duration':duration(target),'scenes':timeline,'voice':a.voice,'audioReview':'pending'},ensure_ascii=False,indent=2))
- print(f'VIDEO_READY {target}',flush=True)
+ os.replace(target,final)
+ print(f'VIDEO_READY {final}',flush=True)
 asyncio.run(main())

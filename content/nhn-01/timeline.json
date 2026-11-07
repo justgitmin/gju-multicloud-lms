@@ -1,0 +1,55 @@
+{
+  "duration": 311.4,
+  "scenes": [
+    {
+      "scene": 1,
+      "title": "콘솔이 달라져도 먼저 확인할 것",
+      "start": 0,
+      "duration": 39.48
+    },
+    {
+      "scene": 2,
+      "title": "조직과 프로젝트의 역할 구분",
+      "start": 39.48,
+      "duration": 40.392
+    },
+    {
+      "scene": 3,
+      "title": "초대와 역할이 준비되었는지",
+      "start": 79.872,
+      "duration": 38.376
+    },
+    {
+      "scene": 4,
+      "title": "문제 / 자원이 사라졌을까?",
+      "start": 118.24799999999999,
+      "duration": 42.912
+    },
+    {
+      "scene": 5,
+      "title": "인증정보는 용도에 따라 다르다",
+      "start": 161.16,
+      "duration": 40.632
+    },
+    {
+      "scene": 6,
+      "title": "비용과 사용 범위를 먼저 정하기",
+      "start": 201.792,
+      "duration": 39.432
+    },
+    {
+      "scene": 7,
+      "title": "직접 미션 / 실습 환경 카드",
+      "start": 241.224,
+      "duration": 39.552
+    },
+    {
+      "scene": 8,
+      "title": "복습 / 위치·권한·범위",
+      "start": 280.776,
+      "duration": 30.624
+    }
+  ],
+  "voice": "ko-KR-SunHiNeural",
+  "audioReview": "pending"
+}

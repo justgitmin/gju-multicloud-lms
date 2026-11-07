@@ -1,0 +1,55 @@
+{
+  "duration": 312.6,
+  "scenes": [
+    {
+      "scene": 1,
+      "title": "서버에 들어가면 S3도 마음대로 쓸까?",
+      "start": 0,
+      "duration": 39.864
+    },
+    {
+      "scene": 2,
+      "title": "정책을 세 질문으로 읽기",
+      "start": 39.864,
+      "duration": 40.344
+    },
+    {
+      "scene": 3,
+      "title": "역할과 임시 자격 증명",
+      "start": 80.208,
+      "duration": 40.92
+    },
+    {
+      "scene": 4,
+      "title": "문제 / 업로드가 안 되면 관리자 권한?",
+      "start": 121.128,
+      "duration": 38.496
+    },
+    {
+      "scene": 5,
+      "title": "오류 공유에 필요한 정보",
+      "start": 159.624,
+      "duration": 43.176
+    },
+    {
+      "scene": 6,
+      "title": "운영 점검: 만들기 전과 후",
+      "start": 202.8,
+      "duration": 40.44
+    },
+    {
+      "scene": 7,
+      "title": "직접 미션 / 권한 요청 한 줄",
+      "start": 243.24,
+      "duration": 40.344
+    },
+    {
+      "scene": 8,
+      "title": "복습 / 편리함보다 필요한 범위",
+      "start": 283.584,
+      "duration": 28.992
+    }
+  ],
+  "voice": "ko-KR-SunHiNeural",
+  "audioReview": "pending"
+}

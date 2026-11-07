@@ -1,0 +1,55 @@
+{
+  "duration": 306.2,
+  "scenes": [
+    {
+      "scene": 1,
+      "title": "잘 만들었다는 것을 어떻게 보여줄까?",
+      "start": 0,
+      "duration": 40.128
+    },
+    {
+      "scene": 2,
+      "title": "제출물은 네 가지 질문에 답하기",
+      "start": 40.128,
+      "duration": 40.08
+    },
+    {
+      "scene": 3,
+      "title": "증빙에 비밀정보가 없는지 확인",
+      "start": 80.208,
+      "duration": 36.528
+    },
+    {
+      "scene": 4,
+      "title": "문제 / 서버 중지면 비용은 모두 끝?",
+      "start": 116.73599999999999,
+      "duration": 37.608
+    },
+    {
+      "scene": 5,
+      "title": "정리 순서는 의존성을 따라",
+      "start": 154.344,
+      "duration": 39.024
+    },
+    {
+      "scene": 6,
+      "title": "삭제 후에도 목록으로 재확인",
+      "start": 193.368,
+      "duration": 40.344
+    },
+    {
+      "scene": 7,
+      "title": "직접 미션 / 제출과 정리 체크리스트",
+      "start": 233.712,
+      "duration": 37.584
+    },
+    {
+      "scene": 8,
+      "title": "다음 단계 / 같은 원리로 다른 클라우드",
+      "start": 271.296,
+      "duration": 34.896
+    }
+  ],
+  "voice": "ko-KR-SunHiNeural",
+  "audioReview": "pending"
+}

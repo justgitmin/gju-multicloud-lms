@@ -1,0 +1,55 @@
+{
+  "duration": 309.933333,
+  "scenes": [
+    {
+      "scene": 1,
+      "title": "학생은 느리다는데 서버는 실행 중?",
+      "start": 0,
+      "duration": 42.336
+    },
+    {
+      "scene": 2,
+      "title": "CPU 하나로 모든 장애를 설명하지 않기",
+      "start": 42.336,
+      "duration": 38.256
+    },
+    {
+      "scene": 3,
+      "title": "로그는 사건의 흔적",
+      "start": 80.592,
+      "duration": 40.128
+    },
+    {
+      "scene": 4,
+      "title": "서버 내부의 작은 점검 도구",
+      "start": 120.72,
+      "duration": 40.584
+    },
+    {
+      "scene": 5,
+      "title": "문제 / 바로 재시작하면 충분할까?",
+      "start": 161.304,
+      "duration": 41.472
+    },
+    {
+      "scene": 6,
+      "title": "알림에는 대응 기준이 필요",
+      "start": 202.776,
+      "duration": 39.888
+    },
+    {
+      "scene": 7,
+      "title": "직접 미션 / 5줄 장애 기록",
+      "start": 242.66400000000002,
+      "duration": 38.064
+    },
+    {
+      "scene": 8,
+      "title": "복습 / 근거로 점검 순서를 고르기",
+      "start": 280.728,
+      "duration": 29.232
+    }
+  ],
+  "voice": "ko-KR-SunHiNeural",
+  "audioReview": "pending"
+}

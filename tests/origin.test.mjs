@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {sameOrigin} from '../lib/origin.mjs';
+test('validates the external host rather than internal runtime URL',()=>{assert.equal(sameOrigin('https://lms.example.com','lms.example.com'),true);assert.equal(sameOrigin('http://127.0.0.1:3300','127.0.0.1:3300'),true);});
+test('rejects foreign, missing and malformed origins',()=>{for(const value of ['https://evil.example',null,'null','https://lms.example.com/path','javascript:bad'])assert.equal(sameOrigin(value,'lms.example.com'),false);});
+test('configured HTTPS origin cannot be downgraded',()=>{assert.equal(sameOrigin('http://lms.example.com','lms.example.com','https://lms.example.com'),false);assert.equal(sameOrigin('https://lms.example.com','lms.example.com','https://lms.example.com'),true);});

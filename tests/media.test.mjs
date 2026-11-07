@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {validMediaKey,captionKey} from '../lib/media-config.mjs';
+test('S3 keys are limited to course video paths',()=>{assert.equal(validMediaKey('courses/2026-multicloud/aws/03/v1/aws-03.mp4','s3'),true);for(const key of ['../../secret','sources/key.txt','https://evil/video.mp4','courses/2026-multicloud/aws/03/v1/../../secret'])assert.equal(validMediaKey(key,'s3'),false);});
+test('local keys cannot escape media directory',()=>{assert.equal(validMediaKey('abc-123.mp4','local'),true);assert.equal(validMediaKey('../abc.mp4','local'),false);});
+test('caption sidecar uses the same registered video folder',()=>{assert.equal(captionKey('courses/2026-multicloud/aws/03/v1/aws-03.mp4','s3'),'courses/2026-multicloud/aws/03/v1/captions-ko.vtt');assert.equal(captionKey('abc.mp4','local'),'abc.vtt');});

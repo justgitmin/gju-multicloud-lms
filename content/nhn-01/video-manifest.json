@@ -1,0 +1,13 @@
+{
+  "id": "nhn-01",
+  "title": "조직·프로젝트·권한 확인",
+  "durationSeconds": 311.4,
+  "bytes": 10387245,
+  "sha256": "15841366929c3a9c94858e74d3dfd0d5d0faae611f27d2a050c1055527e1d536",
+  "s3Key": "courses/2026-multicloud/nhn/01/v1/nhn-01.mp4",
+  "captionKey": "courses/2026-multicloud/nhn/01/v1/captions-ko.vtt",
+  "status": "review-draft",
+  "serverUploaded": false,
+  "decodeCheck": "passed",
+  "audioReview": "pending"
+}

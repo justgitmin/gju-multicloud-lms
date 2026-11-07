@@ -1,0 +1,55 @@
+{
+  "duration": 312.144,
+  "scenes": [
+    {
+      "scene": 1,
+      "title": "DB도 만들었는데 왜 연결이 안 될까?",
+      "start": 0,
+      "duration": 38.52
+    },
+    {
+      "scene": 2,
+      "title": "연결 정보는 네 가지로 정리",
+      "start": 38.52,
+      "duration": 38.952
+    },
+    {
+      "scene": 3,
+      "title": "웹은 공개해도 DB는 제한하기",
+      "start": 77.47200000000001,
+      "duration": 40.944
+    },
+    {
+      "scene": 4,
+      "title": "생성 대기 중에는 병행 작업",
+      "start": 118.41600000000001,
+      "duration": 40.2
+    },
+    {
+      "scene": 5,
+      "title": "문제 / Access denied의 첫 점검",
+      "start": 158.616,
+      "duration": 43.152
+    },
+    {
+      "scene": 6,
+      "title": "연결 시험과 데이터 시험 구분",
+      "start": 201.76800000000003,
+      "duration": 39.696
+    },
+    {
+      "scene": 7,
+      "title": "직접 미션 / 연결 흐름을 설명하기",
+      "start": 241.46400000000003,
+      "duration": 40.896
+    },
+    {
+      "scene": 8,
+      "title": "복습 / DB 연결도 단계별 진단",
+      "start": 282.36,
+      "duration": 29.784
+    }
+  ],
+  "voice": "ko-KR-SunHiNeural",
+  "audioReview": "pending"
+}

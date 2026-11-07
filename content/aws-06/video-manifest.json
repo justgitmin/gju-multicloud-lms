@@ -1,0 +1,13 @@
+{
+  "id": "aws-06",
+  "title": "RDS 구성과 연결 구조",
+  "durationSeconds": 312.144,
+  "bytes": 10477977,
+  "sha256": "3a8a3ceb3ee142ff2faf36712780374e8e979e6b890f49ee598ecd17e3a72ee6",
+  "s3Key": "courses/2026-multicloud/aws/06/v1/aws-06.mp4",
+  "captionKey": "courses/2026-multicloud/aws/06/v1/captions-ko.vtt",
+  "status": "review-draft",
+  "serverUploaded": false,
+  "decodeCheck": "passed",
+  "audioReview": "pending"
+}

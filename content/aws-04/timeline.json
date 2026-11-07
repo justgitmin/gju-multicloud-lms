@@ -1,0 +1,55 @@
+{
+  "duration": 319.666667,
+  "scenes": [
+    {
+      "scene": 1,
+      "title": "오늘의 결과물 / 내 페이지 한 장",
+      "start": 0,
+      "duration": 40.008
+    },
+    {
+      "scene": 2,
+      "title": "생성 전에 여섯 항목 확인",
+      "start": 40.008,
+      "duration": 41.76
+    },
+    {
+      "scene": 3,
+      "title": "먼저 서버 안에서 확인하기",
+      "start": 81.768,
+      "duration": 39.528
+    },
+    {
+      "scene": 4,
+      "title": "페이지와 파일 경로를 연결하기",
+      "start": 121.29599999999999,
+      "duration": 40.728
+    },
+    {
+      "scene": 5,
+      "title": "문제 / 내부는 되는데 외부는 안 된다",
+      "start": 162.024,
+      "duration": 44.016
+    },
+    {
+      "scene": 6,
+      "title": "외부 확인은 실제 사용자 관점",
+      "start": 206.04,
+      "duration": 40.272
+    },
+    {
+      "scene": 7,
+      "title": "직접 미션 / 한 곳만 바꾸어 보기",
+      "start": 246.31199999999998,
+      "duration": 39.696
+    },
+    {
+      "scene": 8,
+      "title": "복습 / 생성보다 검증이 중요하다",
+      "start": 286.008,
+      "duration": 33.672
+    }
+  ],
+  "voice": "ko-KR-SunHiNeural",
+  "audioReview": "pending"
+}

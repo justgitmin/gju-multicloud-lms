@@ -1,0 +1,55 @@
+{
+  "duration": 319.733333,
+  "scenes": [
+    {
+      "scene": 1,
+      "title": "이름 맞추기보다 역할 비교",
+      "start": 0,
+      "duration": 37.872
+    },
+    {
+      "scene": 2,
+      "title": "컴퓨팅과 네트워크 비교",
+      "start": 37.872,
+      "duration": 38.928
+    },
+    {
+      "scene": 3,
+      "title": "스토리지와 데이터베이스 비교",
+      "start": 76.8,
+      "duration": 42.456
+    },
+    {
+      "scene": 4,
+      "title": "문제 / 멀티클라우드면 무조건 더 좋을까?",
+      "start": 119.256,
+      "duration": 40.704
+    },
+    {
+      "scene": 5,
+      "title": "최종 설계는 요구사항에서 시작",
+      "start": 159.96,
+      "duration": 39.024
+    },
+    {
+      "scene": 6,
+      "title": "발표와 제출은 근거 중심으로",
+      "start": 198.984,
+      "duration": 38.832
+    },
+    {
+      "scene": 7,
+      "title": "직접 미션 / 비교표와 정리 목록",
+      "start": 237.816,
+      "duration": 40.44
+    },
+    {
+      "scene": 8,
+      "title": "마무리 / 운영 흐름을 설명할 수 있다면",
+      "start": 278.256,
+      "duration": 41.448
+    }
+  ],
+  "voice": "ko-KR-SunHiNeural",
+  "audioReview": "pending"
+}

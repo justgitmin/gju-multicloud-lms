@@ -1,0 +1,13 @@
+{
+  "id": "aws-08",
+  "title": "결과 제출과 리소스 정리",
+  "durationSeconds": 306.2,
+  "bytes": 11033149,
+  "sha256": "a44606f7a1a8b041b3fa58a42fb21bcdeef7655232669eb02721b167ca9c5a1d",
+  "s3Key": "courses/2026-multicloud/aws/08/v1/aws-08.mp4",
+  "captionKey": "courses/2026-multicloud/aws/08/v1/captions-ko.vtt",
+  "status": "review-draft",
+  "serverUploaded": false,
+  "decodeCheck": "passed",
+  "audioReview": "pending"
+}

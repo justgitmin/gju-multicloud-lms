@@ -52,6 +52,7 @@ model Lesson {
  title String
  position Int
  videoKey String?
+ mediaSha256 String?
  durationSeconds Int
  version Int @default(1)
  course Course @relation(fields:[courseId],references:[id])

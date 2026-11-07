@@ -1,0 +1,55 @@
+{
+  "duration": 315.666667,
+  "scenes": [
+    {
+      "scene": 1,
+      "title": "같은 접속 실패, 원인은 다르다",
+      "start": 0,
+      "duration": 36.528
+    },
+    {
+      "scene": 2,
+      "title": "규칙은 방향·포트·출발지로 읽기",
+      "start": 36.528,
+      "duration": 39.696
+    },
+    {
+      "scene": 3,
+      "title": "문제 1 / 편하다고 모두 열까?",
+      "start": 76.22399999999999,
+      "duration": 42.048
+    },
+    {
+      "scene": 4,
+      "title": "개인 키는 서버의 비밀번호가 아니다",
+      "start": 118.27199999999999,
+      "duration": 39.696
+    },
+    {
+      "scene": 5,
+      "title": "명령어는 네 부분으로 읽기",
+      "start": 157.968,
+      "duration": 39.816
+    },
+    {
+      "scene": 6,
+      "title": "문제 2 / 무엇부터 확인할까?",
+      "start": 197.784,
+      "duration": 41.76
+    },
+    {
+      "scene": 7,
+      "title": "직접 미션 / 접속 기록 세 줄",
+      "start": 239.54399999999998,
+      "duration": 41.832
+    },
+    {
+      "scene": 8,
+      "title": "복습 / 길과 열쇠를 나누자",
+      "start": 281.376,
+      "duration": 34.32
+    }
+  ],
+  "voice": "ko-KR-SunHiNeural",
+  "audioReview": "pending"
+}

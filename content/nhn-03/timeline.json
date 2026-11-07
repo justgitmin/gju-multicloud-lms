@@ -1,0 +1,55 @@
+{
+  "duration": 306.2,
+  "scenes": [
+    {
+      "scene": 1,
+      "title": "같은 Ubuntu, 다른 생성 화면",
+      "start": 0,
+      "duration": 39.096
+    },
+    {
+      "scene": 2,
+      "title": "이미지와 사양을 고르는 기준",
+      "start": 39.096,
+      "duration": 40.44
+    },
+    {
+      "scene": 3,
+      "title": "키페어와 사용자 이름 연결",
+      "start": 79.536,
+      "duration": 38.616
+    },
+    {
+      "scene": 4,
+      "title": "접속 전 주소와 규칙 확인",
+      "start": 118.152,
+      "duration": 38.04
+    },
+    {
+      "scene": 5,
+      "title": "문제 / 키 인증 거부가 나왔다면",
+      "start": 156.192,
+      "duration": 41.424
+    },
+    {
+      "scene": 6,
+      "title": "접속 후에는 내가 어느 서버인지",
+      "start": 197.616,
+      "duration": 39.936
+    },
+    {
+      "scene": 7,
+      "title": "직접 미션 / 접속 성공을 설명",
+      "start": 237.55200000000002,
+      "duration": 39.432
+    },
+    {
+      "scene": 8,
+      "title": "복습 / 생성에서 접속 검증까지",
+      "start": 276.98400000000004,
+      "duration": 29.232
+    }
+  ],
+  "voice": "ko-KR-SunHiNeural",
+  "audioReview": "pending"
+}

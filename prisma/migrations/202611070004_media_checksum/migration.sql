@@ -1,0 +1,1 @@
+ALTER TABLE "Lesson" ADD COLUMN "mediaSha256" TEXT;

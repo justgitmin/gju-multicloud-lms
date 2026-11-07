@@ -1,3 +1,4 @@
+import {sameOrigin} from '../../../../../lib/origin.mjs';
 import {randomBytes} from 'node:crypto';
 import {db} from '../../../../../lib/db';
 import {lessonAccess} from '../../../../../lib/learning';
@@ -5,7 +6,7 @@ import {advance,frontierOf} from '../../../../../lib/progress.mjs';
 export const runtime='nodejs';
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){
  // Mutations require browser same-origin requests, in addition to the authenticated cookie.
- if(request.headers.get('sec-fetch-site')==='cross-site'||request.headers.get('origin')!==new URL(request.url).origin)return Response.json({error:'ORIGIN_DENIED'},{status:403});
+ if(request.headers.get('sec-fetch-site')==='cross-site'||!sameOrigin(request.headers.get('origin'),request.headers.get('host'),process.env.APP_ORIGIN))return Response.json({error:'ORIGIN_DENIED'},{status:403});
  const {id}=await params;const access=await lessonAccess(id);
  if(!access)return Response.json({error:'수강 권한이나 이전 강의 이수 상태를 확인하세요.'},{status:403});
  if(!access.lesson.videoKey)return Response.json({error:'영상 준비 중입니다.'},{status:409});

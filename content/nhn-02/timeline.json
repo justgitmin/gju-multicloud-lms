@@ -1,0 +1,55 @@
+{
+  "duration": 304.4,
+  "scenes": [
+    {
+      "scene": 1,
+      "title": "IP를 붙였는데 왜 접속이 안 될까?",
+      "start": 0,
+      "duration": 38.976
+    },
+    {
+      "scene": 2,
+      "title": "VPC와 Subnet의 공통 역할",
+      "start": 38.976,
+      "duration": 37.872
+    },
+    {
+      "scene": 3,
+      "title": "Fixed IP와 Floating IP 구분",
+      "start": 76.848,
+      "duration": 39.456
+    },
+    {
+      "scene": 4,
+      "title": "보안 그룹 규칙을 읽는 방법",
+      "start": 116.304,
+      "duration": 38.976
+    },
+    {
+      "scene": 5,
+      "title": "문제 / 플로팅 IP만 붙이면 끝?",
+      "start": 155.28,
+      "duration": 39.816
+    },
+    {
+      "scene": 6,
+      "title": "진단은 내부에서 외부로",
+      "start": 195.096,
+      "duration": 39.12
+    },
+    {
+      "scene": 7,
+      "title": "직접 미션 / 접속 조건 표",
+      "start": 234.216,
+      "duration": 39.264
+    },
+    {
+      "scene": 8,
+      "title": "복습 / 공통 원리와 다른 구현",
+      "start": 273.48,
+      "duration": 30.888
+    }
+  ],
+  "voice": "ko-KR-SunHiNeural",
+  "audioReview": "pending"
+}

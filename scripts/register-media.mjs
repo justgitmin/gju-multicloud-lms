@@ -1,7 +1,7 @@
 import {PrismaClient} from '@prisma/client';
 import {execFileSync} from 'node:child_process';
-import {mkdir,copyFile} from 'node:fs/promises';
-import {randomBytes} from 'node:crypto';
+import {mkdir,copyFile,readFile} from 'node:fs/promises';
+import {createHash,randomBytes} from 'node:crypto';
 import path from 'node:path';
 const [lessonId,source,captions]=process.argv.slice(2);const db=new PrismaClient();
 try{
@@ -13,6 +13,6 @@ try{
  const root=process.env.MEDIA_ROOT??path.join(process.cwd(),'media');await mkdir(root,{recursive:true});
  const key=`${randomBytes(16).toString('hex')}.mp4`;await copyFile(path.resolve(source),path.join(root,key));
  if(captions){const {readFile}=await import('node:fs/promises');const content=await readFile(path.resolve(captions),'utf8');if(!content.startsWith('WEBVTT'))throw new Error('Captions must be WebVTT.');await copyFile(path.resolve(captions),path.join(root,key.replace(/\.mp4$/,'.vtt')));}
- await db.lesson.update({where:{id:lesson.id},data:{videoKey:key,durationSeconds:Math.ceil(duration),version:{increment:1}}});
+ await db.lesson.update({where:{id:lesson.id},data:{videoKey:key,durationSeconds:Math.ceil(duration),mediaSha256:createHash('sha256').update(await readFile(path.resolve(source))).digest('hex'),version:lesson.videoKey?{increment:1}:lesson.version}});
  console.log('Media registered. New video version requires fresh completion. Previous records retained.');
 }finally{await db.$disconnect();}

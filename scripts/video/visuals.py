@@ -51,14 +51,15 @@ def draw_visual(d,scene,fonts,index,total):
   d.text((750,755),'더 구체적인 목적지 경로가 우선됩니다.',font=fonts[22],fill='#6a7b70')
  elif kind=='mission':
   d.rounded_rectangle((700,360,1820,805),radius=20,fill='#fff',outline='#c8d8ce',width=2)
-  d.text((750,400),'03:00 / 직접 그려 보기',font=fonts[54],fill='#1c523c')
-  for i,text in enumerate(['① 큰 경계 + 두 구역','② 필요한 통신만 화살표로','③ 인터넷 경로와 접근 조건']):
+  d.text((750,400),'PAUSE / 직접 확인하기',font=fonts[54],fill='#1c523c')
+  for i,text in enumerate(scene['bullets'][:3]):
    d.text((765,510+i*75),text,font=fonts[34],fill='#234c37' if i<=highlight else '#9eaca1')
-  d.text((750,755),'영상 정지 후 미션 수행 · 가짜 대기 시간 없음',font=fonts[22],fill='#6a7b70')
+  d.text((750,755),'영상을 멈추고 수행한 뒤 결과를 확인하세요.',font=fonts[22],fill='#6a7b70')
  elif kind=='recap':
-  for i,(title,subtitle) in enumerate([('주소','계정 / 리전 / IP'),('길','서브넷 / 라우팅 / IGW'),('문','보안 / OS / 서비스')]):
+  for i,subtitle in enumerate(scene['bullets'][:3]):
+   title=f'0{i+1} / REMEMBER'
    box(d,(710,370+i*145,1810,495+i*145),title,subtitle,fonts,i==highlight)
- else:
+ elif kind=='network':
   # VPC contains subnet examples. Internet gateway is explicitly marked at the edge.
   d.rounded_rectangle((1080,370,1815,805),radius=20,outline='#59876d',width=3,fill='#eaf1e9')
   d.text((1100,385),'VPC 10.20.0.0/16',font=fonts[26],fill='#345d42')
@@ -78,5 +79,28 @@ def draw_visual(d,scene,fonts,index,total):
   if stage==0:
    d.text((1100,490),'? 연결 경로를 찾아보세요',font=fonts[34],fill='#a2691d')
 
+ elif kind=='terminal':
+  d.rounded_rectangle((700,360,1820,805),radius=20,fill='#152b25')
+  d.text((735,385),'COMMAND EXAMPLE / 실제 실행 결과가 아닙니다',font=fonts[22],fill='#d9ad5c')
+  y=450
+  for command in scene.get('commands',[]):
+   for line in lines(d,command,fonts[26],1030):
+    d.text((740,y),line,font=fonts[26],fill='#d7eddd');y+=42
+   y+=18
+  d.text((735,758),'실제 주소·사용자·경로는 제공 환경에 맞게 변경',font=fonts[22],fill='#97b7a3')
+ elif kind=='cards':
+  for i,text in enumerate(scene.get('nodes',scene['bullets'])[:3]):
+   y=370+i*145;d.rounded_rectangle((710,y,1810,y+125),radius=16,fill='#e1eee7' if i==highlight else 'white',outline='#bccfc4',width=2)
+   d.text((740,y+15),f'CHECK 0{i+1}',font=fonts[22],fill='#9d661f')
+   for j,line in enumerate(lines(d,text,fonts[30],1000)):d.text((740,y+50+j*40),line,font=fonts[30],fill='#173f2f')
+ else:
+  nodes=scene.get('nodes',scene['bullets'])[:3]
+  d.text((730,385),'FOLLOW THE FLOW / 순서대로 확인',font=fonts[26],fill='#54745f')
+  for i,text in enumerate(nodes):
+   x=710+i*370;y=480
+   d.rounded_rectangle((x,y,x+340,y+230),radius=18,fill='#e1eee7' if i==highlight else 'white',outline='#26735b' if i==highlight else '#c4d5c9',width=3)
+   d.text((x+22,y+20),f'STEP 0{i+1}',font=fonts[22],fill='#a16c26')
+   for j,line in enumerate(lines(d,text,fonts[30],285)):d.text((x+22,y+85+j*45),line,font=fonts[30],fill='#173f2f')
+   if i<2:arrow(d,[(x+340,y+115),(x+369,y+115)],i==highlight)
  d.rectangle((100,816,1820,821),fill='#dce5dc')
  d.rectangle((100,816,100+1720*(index+1)/max(1,total),821),fill='#c49139')

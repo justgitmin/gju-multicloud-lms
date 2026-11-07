@@ -1,0 +1,55 @@
+{
+  "duration": 300.96,
+  "scenes": [
+    {
+      "scene": 1,
+      "title": "앱은 같게, 플랫폼은 다르게",
+      "start": 0,
+      "duration": 38.76
+    },
+    {
+      "scene": 2,
+      "title": "파일과 실행 환경을 먼저 확인",
+      "start": 38.76,
+      "duration": 38.904
+    },
+    {
+      "scene": 3,
+      "title": "Nginx 설치와 내부 응답 확인",
+      "start": 77.664,
+      "duration": 38.376
+    },
+    {
+      "scene": 4,
+      "title": "한 파일이 아니라 앱 전체 배포",
+      "start": 116.03999999999999,
+      "duration": 38.568
+    },
+    {
+      "scene": 5,
+      "title": "문제 / 글자는 보이는데 스타일이 없다",
+      "start": 154.608,
+      "duration": 40.632
+    },
+    {
+      "scene": 6,
+      "title": "두 클라우드의 결과를 같은 표로",
+      "start": 195.24,
+      "duration": 39.048
+    },
+    {
+      "scene": 7,
+      "title": "직접 미션 / 동일 앱 비교 증빙",
+      "start": 234.288,
+      "duration": 38.856
+    },
+    {
+      "scene": 8,
+      "title": "복습 / 결과는 같고 운영 조건은 다르다",
+      "start": 273.144,
+      "duration": 27.816
+    }
+  ],
+  "voice": "ko-KR-SunHiNeural",
+  "audioReview": "pending"
+}

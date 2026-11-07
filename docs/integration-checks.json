@@ -1,0 +1,31 @@
+{
+  "engine": "PGlite PostgreSQL-compatible WASM engine",
+  "productionPostgresTested": false,
+  "checks": [
+    "Dedicated test database is empty and reachable",
+    "HTTP app starts",
+    "Anonymous classroom access redirects",
+    "Registration creates authenticated session",
+    "Student cannot access admin page",
+    "Enrollment starts pending",
+    "Pending student cannot access lesson",
+    "Admin login succeeds",
+    "Admin approves enrollment",
+    "Approved student sees labs and quizzes",
+    "Anonymous video access denied",
+    "Approved video transport supports byte ranges",
+    "Later lesson remains locked",
+    "Playback session starts with server state",
+    "Unseen forward jump is rejected by server",
+    "Real elapsed playback advances progress",
+    "New session resumes saved position",
+    "Replaced playback session cannot save",
+    "95 percent validated watch completes video",
+    "Completion unlocks next lesson page",
+    "Student lab submission saved",
+    "Quiz graded on server",
+    "Student cannot export report",
+    "Admin CSV report contains enrollment",
+    "Cross-origin playback mutation rejected"
+  ]
+}

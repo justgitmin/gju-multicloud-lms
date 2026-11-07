@@ -5,7 +5,14 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
       ENABLE_REGISTRATION: ${ENABLE_REGISTRATION:-false}
+      APP_ORIGIN: ${APP_ORIGIN:-}
       MEDIA_ROOT: /app/media
+      MEDIA_BACKEND: ${MEDIA_BACKEND:-local}
+      MEDIA_S3_BUCKET: ${MEDIA_S3_BUCKET:-}
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
     volumes:
       - ./media:/app/media:ro
     depends_on:
@@ -34,6 +41,11 @@ services:
       target: build
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
+      MEDIA_S3_BUCKET: ${MEDIA_S3_BUCKET:-}
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     depends_on:

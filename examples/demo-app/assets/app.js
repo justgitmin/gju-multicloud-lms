@@ -1,0 +1,1 @@
+document.getElementById('check').addEventListener('click',()=>{const cloud=document.getElementById('cloud').value;document.getElementById('result').textContent=`${cloud} 환경 표시 · 정적 앱 JavaScript 동작 확인: ${new Date().toLocaleTimeString('ko-KR')}`;});

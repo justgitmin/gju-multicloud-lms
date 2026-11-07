@@ -1,0 +1,55 @@
+{
+  "duration": 306.733333,
+  "scenes": [
+    {
+      "scene": 1,
+      "title": "파일이 올라갔는데 왜 403일까?",
+      "start": 0,
+      "duration": 38.592
+    },
+    {
+      "scene": 2,
+      "title": "버킷과 객체 키를 주소처럼 읽기",
+      "start": 38.592,
+      "duration": 40.56
+    },
+    {
+      "scene": 3,
+      "title": "비공개를 기본으로 시작하기",
+      "start": 79.152,
+      "duration": 36.504
+    },
+    {
+      "scene": 4,
+      "title": "문제 / 교육 영상이라면 모두 공개?",
+      "start": 115.656,
+      "duration": 42.624
+    },
+    {
+      "scene": 5,
+      "title": "업로드 후 크기·유형·내용 확인",
+      "start": 158.28,
+      "duration": 38.184
+    },
+    {
+      "scene": 6,
+      "title": "정적 사이트와 강의 보관을 구분",
+      "start": 196.464,
+      "duration": 38.28
+    },
+    {
+      "scene": 7,
+      "title": "직접 미션 / 비공개 파일 확인",
+      "start": 234.744,
+      "duration": 38.376
+    },
+    {
+      "scene": 8,
+      "title": "복습 / 저장과 제공을 나누자",
+      "start": 273.12,
+      "duration": 33.6
+    }
+  ],
+  "voice": "ko-KR-SunHiNeural",
+  "audioReview": "pending"
+}
