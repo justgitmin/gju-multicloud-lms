@@ -156,3 +156,5 @@ node_modules/
 *.tsbuildinfo
 backups/
 media/
+__pycache__/
+video-output/

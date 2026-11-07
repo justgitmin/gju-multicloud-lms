@@ -1,0 +1,55 @@
+{
+  "duration": 348.144,
+  "scenes": [
+    {
+      "scene": 1,
+      "title": "클라우드 실습, 시작 전 4가지",
+      "start": 0,
+      "duration": 41.904
+    },
+    {
+      "scene": 2,
+      "title": "01 / 제공받은 계정으로 시작",
+      "start": 41.904,
+      "duration": 41.376
+    },
+    {
+      "scene": 3,
+      "title": "02 / 리전은 자원의 작업 위치",
+      "start": 83.28,
+      "duration": 48.12
+    },
+    {
+      "scene": 4,
+      "title": "03 / 필요한 작업에 필요한 권한만",
+      "start": 131.4,
+      "duration": 44.232
+    },
+    {
+      "scene": 5,
+      "title": "04 / 예산 알림과 비용 통제",
+      "start": 175.632,
+      "duration": 44.136
+    },
+    {
+      "scene": 6,
+      "title": "실습 기록이 문제 해결을 빠르게",
+      "start": 219.768,
+      "duration": 41.76
+    },
+    {
+      "scene": 7,
+      "title": "종료는 브라우저 닫기가 아니라 자원 확인",
+      "start": 261.528,
+      "duration": 40.536
+    },
+    {
+      "scene": 8,
+      "title": "직접 확인하고 다음 강의로",
+      "start": 302.064,
+      "duration": 46.08
+    }
+  ],
+  "voice": "ko-KR-SunHiNeural",
+  "audioReview": "pending"
+}

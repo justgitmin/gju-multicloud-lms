@@ -1,0 +1,13 @@
+{
+  "id": "aws-01",
+  "filename": "aws-01.mp4",
+  "sha256": "e72884be2555a8061362153f6ac6af29fdde22dc0ef6d698f8376b2a3a719446",
+  "durationSeconds": 348.144,
+  "width": 1920,
+  "height": 1080,
+  "bytes": 6333066,
+  "status": "review-draft",
+  "serverUploaded": false,
+  "remainingLessons": 15,
+  "libraryFileId": "libfile_b73ce81bb83c81919bb1cbf729e42568"
+}

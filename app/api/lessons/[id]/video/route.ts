@@ -11,10 +11,11 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
  const key=access.lesson.videoKey;
  // Only flat, explicitly registered MP4 filenames may be read. Media never lives in public/.
  if(!key||!/^[a-zA-Z0-9_-]+\.mp4$/.test(key))return new Response('Video unavailable',{status:404});
- const filename=path.join(/* turbopackIgnore: true */ process.env.MEDIA_ROOT??path.join(process.cwd(),'media'),key);
+ const captions=new URL(request.url).searchParams.get('captions')==='1';
+ const filename=path.join(/* turbopackIgnore: true */ process.env.MEDIA_ROOT??path.join(process.cwd(),'media'),captions?key.replace(/\.mp4$/,'.vtt'):key);
  let size;try{size=(await stat(/* turbopackIgnore: true */ filename)).size;}catch{return new Response('Video unavailable',{status:404});}
  let range;try{range=parseRange(request.headers.get('range'),size);}catch{return new Response(null,{status:416,headers:{'Content-Range':`bytes */${size}`}});}
- const headers:Record<string,string>={'Content-Type':'video/mp4','Accept-Ranges':'bytes','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Length':String(range?range.end-range.start+1:size)};
+ const headers:Record<string,string>={'Content-Type':captions?'text/vtt; charset=utf-8':'video/mp4','Accept-Ranges':'bytes','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Length':String(range?range.end-range.start+1:size)};
  if(range)headers['Content-Range']=`bytes ${range.start}-${range.end}/${size}`;
  const stream=Readable.toWeb(createReadStream(/* turbopackIgnore: true */ filename,range??undefined)) as ReadableStream<Uint8Array>;
  return new Response(stream,{status:range?206:200,headers});
