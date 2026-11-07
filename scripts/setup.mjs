@@ -1,0 +1,14 @@
+import {PrismaClient} from '@prisma/client';
+import {hashPassword,validPassword} from '../lib/password.mjs';
+const db=new PrismaClient();
+try{
+ const email=process.env.ADMIN_EMAIL?.trim().toLowerCase();const password=process.env.ADMIN_PASSWORD;
+ if(!email||!email.includes('@')||!validPassword(password))throw new Error('Set ADMIN_EMAIL and ADMIN_PASSWORD (12–128 characters) in the process environment.');
+ const existing=await db.user.findUnique({where:{email}});
+ if(existing)throw new Error('Account already exists. Refusing to change its password or role.');
+ await db.$transaction(async tx=>{
+ await tx.user.create({data:{email,name:'교육 운영자',passwordHash:await hashPassword(password),role:'ADMIN'}});
+ await tx.course.upsert({where:{id:'gju-multicloud-2026'},create:{id:'gju-multicloud-2026',title:'AWS·NHN Cloud 멀티클라우드 운영',published:true},update:{}});
+ });
+ console.log('Administrator and course initialized.');
+}finally{await db.$disconnect();}

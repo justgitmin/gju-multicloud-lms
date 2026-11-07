@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export default function Privacy(){return <main className="account"><div className="panel"><h2>개인정보 수집·이용 안내</h2><p>수집 항목: 이름, 학번, 이메일, 비밀번호의 단방향 해시, 수강신청 정보. 학습 기능 도입 후 진도·평가·제출 기록을 수집합니다.</p><p>이용 목적: 계정 인증, 수강 대상 확인, 교육 운영 및 이수 관리.</p><p>필수 항목 수집에 동의하지 않을 수 있으며, 이 경우 회원가입과 수강 서비스를 이용할 수 없습니다.</p><p>운영 개시 전 학교와 운영자가 개인정보처리자 명칭, 문의처, 보유기간, 위탁·국외 이전 등 적용 사항을 확정해야 합니다. 현재 개발 단계이며 실제 학생 등록을 받지 않습니다.</p><Link href="/register">회원가입으로 돌아가기</Link></div></main>}

@@ -4,6 +4,7 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
+      ENABLE_REGISTRATION: ${ENABLE_REGISTRATION:-false}
     depends_on:
       db:
         condition: service_healthy
@@ -23,5 +24,18 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  tools:
+    profiles: ["tools"]
+    build:
+      context: .
+      target: build
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["npm", "run", "db:migrate"]
 volumes:
   postgres_data:
