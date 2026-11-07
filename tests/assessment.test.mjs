@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {grade,completion,safeUrl,csvCell} from '../lib/assessment.mjs';
+test('server grade ignores any claimed client score',()=>{assert.equal(grade([0,1,2,3,0],[0,1,2,3,1]),80);assert.equal(grade([1,1],[0,0]),0);});
+test('missing or malformed answers cannot pass',()=>{for(const answers of [[],[0],[-1,0],[0,4],[0,'0'],null])assert.throws(()=>grade(answers,[0,0]));});
+const criteria={approved:true,lessons:16,completedLessons:16,labs:2,approvedLabs:2,quizzes:2,passedQuizzes:2};
+test('completion requires all categories and approved enrollment',()=>{assert.equal(completion(criteria),true);for(const patch of [{approved:false},{completedLessons:15},{approvedLabs:1},{passedQuizzes:1},{lessons:0,completedLessons:0}])assert.equal(completion({...criteria,...patch}),false);});
+test('submission links reject executable protocols and credentials',()=>{assert.equal(safeUrl('https://example.com/work'),'https://example.com/work');assert.equal(safeUrl(''),null);for(const value of ['javascript:alert(1)','data:text/html,test','file:///etc/passwd','https://user:secret@example.com'])assert.throws(()=>safeUrl(value));});
+test('CSV quotes data and neutralizes spreadsheet formulas',()=>{assert.equal(csvCell('a"b'),'"a""b"');assert.equal(csvCell('=1+1'),'"\'=1+1"');assert.equal(csvCell('  @sum(A1)'),'"\'  @sum(A1)"');assert.equal(csvCell('학생'),'"학생"');});

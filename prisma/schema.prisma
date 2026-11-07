@@ -31,6 +31,8 @@ model Course {
  published Boolean @default(false)
  enrollments Enrollment[]
  lessons Lesson[]
+ labs Lab[]
+ quizzes Quiz[]
 }
 model Enrollment {
  id String @id @default(cuid())
@@ -40,6 +42,8 @@ model Enrollment {
  user User @relation(fields:[userId],references:[id])
  course Course @relation(fields:[courseId],references:[id])
  progress Progress[]
+ submissions Submission[]
+ attempts QuizAttempt[]
  @@unique([userId,courseId])
 }
 model Lesson {
@@ -92,4 +96,56 @@ model Playback {
  lastAt DateTime @default(now())
  revision Int @default(0)
  @@unique([enrollmentId,lessonId])
+}
+
+enum SubmissionStatus {
+ PENDING
+ APPROVED
+ REVISION
+}
+model Lab {
+ id String @id
+ courseId String
+ title String
+ instructions String
+ position Int
+ course Course @relation(fields:[courseId],references:[id])
+ submissions Submission[]
+}
+model Submission {
+ id String @id @default(cuid())
+ enrollmentId String
+ labId String
+ content String
+ url String?
+ status SubmissionStatus @default(PENDING)
+ feedback String @default("")
+ reviewedBy String?
+ reviewedAt DateTime?
+ updatedAt DateTime @updatedAt
+ enrollment Enrollment @relation(fields:[enrollmentId],references:[id])
+ lab Lab @relation(fields:[labId],references:[id])
+ @@unique([enrollmentId,labId])
+}
+model Quiz {
+ id String @id
+ courseId String
+ title String
+ questions Json
+ answerKey Json
+ version Int @default(1)
+ course Course @relation(fields:[courseId],references:[id])
+ attempts QuizAttempt[]
+}
+model QuizAttempt {
+ id String @id @default(cuid())
+ enrollmentId String
+ quizId String
+ version Int
+ score Int
+ answers Json
+ createdAt DateTime @default(now())
+ enrollment Enrollment @relation(fields:[enrollmentId],references:[id])
+ quiz Quiz @relation(fields:[quizId],references:[id])
+ @@index([enrollmentId,quizId,version])
 }

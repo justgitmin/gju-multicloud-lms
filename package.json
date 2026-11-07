@@ -13,7 +13,8 @@
     "db:migrate": "prisma migrate deploy",
     "db:setup": "node scripts/setup.mjs",
     "db:seed-lessons": "node scripts/seed-lessons.mjs",
-    "media:register": "node scripts/register-media.mjs"
+    "media:register": "node scripts/register-media.mjs",
+    "db:seed-assessments": "node scripts/seed-assessments.mjs"
   },
   "dependencies": {
     "next": "^16.0.0",
