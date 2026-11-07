@@ -1,0 +1,68 @@
+generator client {
+ provider = "prisma-client-js"
+}
+datasource db {
+ provider = "postgresql"
+ url = env("DATABASE_URL")
+}
+enum Role {
+ STUDENT
+ ADMIN
+}
+enum EnrollmentStatus {
+ PENDING
+ APPROVED
+ REJECTED
+}
+model User {
+ id String @id @default(cuid())
+ email String @unique
+ name String
+ studentNumber String?
+ passwordHash String
+ role Role @default(STUDENT)
+ createdAt DateTime @default(now())
+ enrollments Enrollment[]
+}
+model Course {
+ id String @id @default(cuid())
+ title String
+ published Boolean @default(false)
+ enrollments Enrollment[]
+ lessons Lesson[]
+}
+model Enrollment {
+ id String @id @default(cuid())
+ userId String
+ courseId String
+ status EnrollmentStatus @default(PENDING)
+ user User @relation(fields:[userId],references:[id])
+ course Course @relation(fields:[courseId],references:[id])
+ progress Progress[]
+ @@unique([userId,courseId])
+}
+model Lesson {
+ id String @id @default(cuid())
+ courseId String
+ title String
+ position Int
+ videoKey String?
+ durationSeconds Int
+ version Int @default(1)
+ course Course @relation(fields:[courseId],references:[id])
+ progress Progress[]
+ @@unique([courseId,position])
+}
+model Progress {
+ id String @id @default(cuid())
+ enrollmentId String
+ lessonId String
+ version Int
+ resumeSeconds Float @default(0)
+ watchedRanges Json @default("[]")
+ completedAt DateTime?
+ updatedAt DateTime @updatedAt
+ enrollment Enrollment @relation(fields:[enrollmentId],references:[id])
+ lesson Lesson @relation(fields:[lessonId],references:[id])
+ @@unique([enrollmentId,lessonId,version])
+}
