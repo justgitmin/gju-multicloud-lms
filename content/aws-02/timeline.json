@@ -1,0 +1,67 @@
+{
+  "duration": 442.733333,
+  "scenes": [
+    {
+      "scene": 1,
+      "title": "서버는 켰는데, 왜 안 열릴까?",
+      "start": 0,
+      "duration": 38.904
+    },
+    {
+      "scene": 2,
+      "title": "VPC는 내 서비스의 네트워크 경계",
+      "start": 38.904,
+      "duration": 44.976
+    },
+    {
+      "scene": 3,
+      "title": "Subnet: 큰 경계를 작은 구역으로",
+      "start": 83.88,
+      "duration": 44.16
+    },
+    {
+      "scene": 4,
+      "title": "길 안내는 라우팅 테이블의 역할",
+      "start": 128.04,
+      "duration": 42.48
+    },
+    {
+      "scene": 5,
+      "title": "이름이 public이면 퍼블릭일까?",
+      "start": 170.51999999999998,
+      "duration": 44.52
+    },
+    {
+      "scene": 6,
+      "title": "직접 IPv4 접속: 조건을 함께 맞추기",
+      "start": 215.04,
+      "duration": 47.112
+    },
+    {
+      "scene": 7,
+      "title": "DB까지 인터넷에 공개할 필요는 없다",
+      "start": 262.152,
+      "duration": 46.872
+    },
+    {
+      "scene": 8,
+      "title": "장애 미션: 빠진 설정 하나 찾기",
+      "start": 309.024,
+      "duration": 48.576
+    },
+    {
+      "scene": 9,
+      "title": "내가 직접 그리는 3분 미션",
+      "start": 357.6,
+      "duration": 44.832
+    },
+    {
+      "scene": 10,
+      "title": "오늘의 한 줄: 주소·길·문을 함께 보기",
+      "start": 402.432,
+      "duration": 40.272
+    }
+  ],
+  "voice": "ko-KR-SunHiNeural",
+  "audioReview": "pending"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "aws-02",
+  "filename": "aws-02.mp4",
+  "sha256": "36269aa9949d2d4dd370a5855ce10cf679797dc6bcfa86ff99dfdf307832c9b6",
+  "durationSeconds": 442.733333,
+  "width": 1920,
+  "height": 1080,
+  "bytes": 14280063,
+  "status": "review-draft",
+  "serverUploaded": false,
+  "remainingLessons": 14,
+  "visualScenes": 10,
+  "captionCues": 80,
+  "predictionQuestions": 2,
+  "libraryFileId": "libfile_9595ab3a01a8819183aa9abb19ee672a"
+}
