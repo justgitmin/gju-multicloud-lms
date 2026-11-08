@@ -1,13 +1,15 @@
 {
   "id": "nhn-07",
   "title": "모니터링과 장애 확인",
-  "durationSeconds": 309.933333,
-  "bytes": 9831672,
-  "sha256": "96d29cf1a5b108b8cce34939ba12e2ddc83f80bf2126bf709447b398540b2ebc",
+  "durationSeconds": 313.4,
+  "bytes": 10215600,
+  "sha256": "a793bb228f4e0d2d6602b1a28fa73614da231ef478a5b7e033d9127f9069aa28",
   "s3Key": "courses/2026-multicloud/nhn/07/v1/nhn-07.mp4",
   "captionKey": "courses/2026-multicloud/nhn/07/v1/captions-ko.vtt",
-  "status": "review-draft",
+  "status": "technically-verified; final listening pending",
   "serverUploaded": false,
   "decodeCheck": "passed",
-  "audioReview": "pending"
+  "audioReview": "pending",
+  "syncRevision": 2,
+  "syncCheck": "PCM/frame/encoded-speech/page-boundary passed"
 }

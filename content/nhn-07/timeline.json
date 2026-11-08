@@ -1,55 +1,407 @@
 {
-  "duration": 309.933333,
+  "duration": 313.4,
+  "fps": 15,
+  "totalFrames": 4701,
+  "totalSamples": 7521600,
   "scenes": [
     {
       "scene": 1,
       "title": "학생은 느리다는데 서버는 실행 중?",
-      "start": 0,
-      "duration": 42.336
+      "startFrame": 0,
+      "endFrame": 642,
+      "start": 0.0,
+      "duration": 42.8,
+      "voiceDuration": 42.336,
+      "audioSource": "regenerated",
+      "sentences": [
+        {
+          "startFrame": 0,
+          "endFrame": 50,
+          "text": "사용자가 페이지가 느리다고 합니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 50,
+          "endFrame": 112,
+          "text": "콘솔에서는 인스턴스가 실행 중으로 보입니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 112,
+          "endFrame": 158,
+          "text": "그렇다면 문제가 없는 걸까요?",
+          "focus": null
+        },
+        {
+          "startFrame": 158,
+          "endFrame": 248,
+          "text": "실행 상태는 중요한 정보지만 서비스 품질 전체를 보여 주지는 않습니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 248,
+          "endFrame": 349,
+          "text": "오늘은 사용자 요청 결과와 자원 지표, 서비스 로그를 함께 확인하겠습니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 349,
+          "endFrame": 479,
+          "text": "어떤 지표가 기본 제공되고 어떤 지표에 에이전트 설정이 필요한지는 실제 서비스 구성에 따라 다릅니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 479,
+          "endFrame": 642,
+          "text": "화면에 없는 값을 있다고 가정하거나 합성 그래프를 실제 관측값으로 설명하지 않고, 확인 가능한 근거를 모으는 방법에 집중합니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 2,
       "title": "CPU 하나로 모든 장애를 설명하지 않기",
-      "start": 42.336,
-      "duration": 38.256
+      "startFrame": 642,
+      "endFrame": 1222,
+      "start": 42.8,
+      "duration": 38.666666666666664,
+      "voiceDuration": 38.256,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 642,
+          "endFrame": 745,
+          "text": "자원 지표에는 씨피유 사용, 메모리와 디스크, 네트워크 같은 항목이 있습니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 745,
+          "endFrame": 833,
+          "text": "하지만 모든 지표가 설치 없이 같은 방식으로 보장되는 것은 아닙니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 833,
+          "endFrame": 899,
+          "text": "콘솔과 에이전트의 제공 범위를 먼저 확인하세요.",
+          "focus": 2
+        },
+        {
+          "startFrame": 899,
+          "endFrame": 1001,
+          "text": "지표를 볼 때는 장애 발생 시각과 같은 시간 구간을 고르고 집계 주기를 확인합니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 1001,
+          "endFrame": 1086,
+          "text": "씨피유가 낮다고 데이터베이스나 네트워크 문제가 없는 것은 아닙니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 1086,
+          "endFrame": 1222,
+          "text": "하나의 수치로 결론을 내리기보다 사용자 증상과 다른 지표가 같은 시점에 어떻게 바뀌었는지 비교해야 합니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 3,
       "title": "로그는 사건의 흔적",
-      "start": 80.592,
-      "duration": 40.128
+      "startFrame": 1222,
+      "endFrame": 1830,
+      "start": 81.46666666666667,
+      "duration": 40.53333333333333,
+      "voiceDuration": 40.128,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 1222,
+          "endFrame": 1314,
+          "text": "로그는 어떤 요청과 오류가 발생했는지 사건의 흔적을 남깁니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 1314,
+          "endFrame": 1427,
+          "text": "웹 서버의 접근 로그와 오류 로그, 시스템 서비스 로그는 서로 다른 정보를 제공합니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 1427,
+          "endFrame": 1542,
+          "text": "문제가 발생한 시각과 요청 주소, 상태 코드를 같이 적어 두면 관련 기록을 찾기 쉽습니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 1542,
+          "endFrame": 1635,
+          "text": "다만 로그에 비밀번호나 토큰, 개인정보가 남지 않도록 설계해야 합니다.",
+          "focus": 2
+        },
+        {
+          "startFrame": 1635,
+          "endFrame": 1743,
+          "text": "로그 전체를 공개 과제에 올리기보다 필요한 구간과 비밀정보를 제거한 내용을 제출하세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 1743,
+          "endFrame": 1830,
+          "text": "정상일 때의 기록도 남겨야 장애 상황과 비교할 수 있습니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 4,
       "title": "서버 내부의 작은 점검 도구",
-      "start": 120.72,
-      "duration": 40.584
+      "startFrame": 1830,
+      "endFrame": 2445,
+      "start": 122.0,
+      "duration": 41.0,
+      "voiceDuration": 40.584,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 1830,
+          "endFrame": 1904,
+          "text": "화면의 명령은 우분투에서 상태를 확인하는 예시입니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1904,
+          "endFrame": 2011,
+          "text": "서비스가 실행 중인지, 디스크 여유가 있는지, 메모리 상태가 어떤지 살펴봅니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 2011,
+          "endFrame": 2100,
+          "text": "최근 서비스 로그와 로컬호스트 에이치티티피 응답도 확인할 수 있습니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 2100,
+          "endFrame": 2180,
+          "text": "여기서 표시한 명령은 실제 측정값이 아니라 점검 방법입니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2180,
+          "endFrame": 2246,
+          "text": "실행 결과는 제공 서버에서 직접 읽어야 합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2246,
+          "endFrame": 2351,
+          "text": "디스크가 부족하다고 아무 파일이나 지우지 말고 사용량과 보관 기준을 확인하세요.",
+          "focus": 1
+        },
+        {
+          "startFrame": 2351,
+          "endFrame": 2445,
+          "text": "단순 재시작 전에 현재 상태를 기록하면 원인 분석에 도움이 됩니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 5,
       "title": "문제 / 바로 재시작하면 충분할까?",
-      "start": 161.304,
-      "duration": 41.472
+      "startFrame": 2445,
+      "endFrame": 3074,
+      "start": 163.0,
+      "duration": 41.93333333333333,
+      "voiceDuration": 41.472,
+      "audioSource": "regenerated",
+      "sentences": [
+        {
+          "startFrame": 2445,
+          "endFrame": 2484,
+          "text": "장애가 발생했습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2484,
+          "endFrame": 2575,
+          "text": "에이는 증상과 발생 시각, 최근 변경과 관련 상태를 기록합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2575,
+          "endFrame": 2637,
+          "text": "비는 아무 기록 없이 계속 재시작합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2637,
+          "endFrame": 2672,
+          "text": "정답은 에이입니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2672,
+          "endFrame": 2771,
+          "text": "재시작이 일시적으로 증상을 없애도 원인이 무엇이었는지 남지 않을 수 있습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2771,
+          "endFrame": 2859,
+          "text": "물론 서비스 복구가 급한 경우에는 운영 절차에 따라 조치해야 합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2859,
+          "endFrame": 2957,
+          "text": "그때도 가능한 범위의 상태와 조치 시각을 기록하고, 결과를 다시 확인하세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 2957,
+          "endFrame": 3074,
+          "text": "같은 장애가 반복된다면 재시작 횟수보다 공통 조건과 지표를 찾는 것이 중요합니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 6,
       "title": "알림에는 대응 기준이 필요",
-      "start": 202.776,
-      "duration": 39.888
+      "startFrame": 3074,
+      "endFrame": 3679,
+      "start": 204.93333333333334,
+      "duration": 40.333333333333336,
+      "voiceDuration": 39.888,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 3074,
+          "endFrame": 3138,
+          "text": "알림은 숫자를 설정하는 것으로 끝나지 않습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3138,
+          "endFrame": 3243,
+          "text": "어떤 조건이 얼마나 지속되면 알려야 하는지, 누가 확인하고 무엇을 할지 정합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3243,
+          "endFrame": 3348,
+          "text": "너무 민감하면 정상 변화에도 알림이 쌓이고, 너무 느슨하면 문제를 놓칠 수 있습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3348,
+          "endFrame": 3478,
+          "text": "작은 실습에서는 어떤 지표가 정상과 다른지 설명하고 알림 기준의 초안을 적는 것부터 시작할 수 있습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3478,
+          "endFrame": 3555,
+          "text": "실제 알림 생성은 권한과 서비스 범위에 맞게 수행하세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 3555,
+          "endFrame": 3679,
+          "text": "알림 자체와 서비스 복구 성공은 다르므로 조치 후 사용자 관점의 결과를 다시 확인합니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 7,
       "title": "직접 미션 / 5줄 장애 기록",
-      "start": 242.66400000000002,
-      "duration": 38.064
+      "startFrame": 3679,
+      "endFrame": 4256,
+      "start": 245.26666666666668,
+      "duration": 38.46666666666667,
+      "voiceDuration": 38.064,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 3679,
+          "endFrame": 3743,
+          "text": "이번에는 일부러 장애를 만들 필요가 없습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3743,
+          "endFrame": 3821,
+          "text": "현재 정상 상태를 기준으로 다섯 줄 점검 기록을 작성하세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 3821,
+          "endFrame": 3933,
+          "text": "확인 시각과 사용자 요청 결과, 서비스 상태와 자원 지표, 관련 로그를 정리합니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 3933,
+          "endFrame": 4013,
+          "text": "실제 문제가 있다면 최근 변경과 조치 결과를 추가합니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 4013,
+          "endFrame": 4104,
+          "text": "데이터를 확인하지 못했다면 정상이라고 적지 말고 미확인으로 표시하세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 4104,
+          "endFrame": 4256,
+          "text": "마지막으로 에이 더블유 에스와 엔에이치엔에서 공통으로 확인할 항목과 플랫폼별로 다른 지표 수집 방법을 하나씩 적어 보세요.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 8,
       "title": "복습 / 근거로 점검 순서를 고르기",
-      "start": 280.728,
-      "duration": 29.232
+      "startFrame": 4256,
+      "endFrame": 4701,
+      "start": 283.73333333333335,
+      "duration": 29.666666666666668,
+      "voiceDuration": 29.232,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 4256,
+          "endFrame": 4386,
+          "text": "오늘은 실행 상태만으로 서비스 품질을 단정하지 않고 사용자 증상과 지표, 로그를 함께 확인했습니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 4386,
+          "endFrame": 4479,
+          "text": "원인이 확실하지 않으면 한 번에 하나의 가설을 점검하고 결과를 남깁니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 4479,
+          "endFrame": 4546,
+          "text": "관측한 값과 추측을 구분하는 태도가 중요합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 4546,
+          "endFrame": 4701,
+          "text": "다음 강의에서는 두 클라우드에서 배운 내용을 기능별 비교표와 아키텍처 초안으로 정리하고 자원 정리를 마무리하겠습니다.",
+          "focus": null
+        }
+      ]
     }
   ],
   "voice": "ko-KR-SunHiNeural",
-  "audioReview": "pending"
+  "timingMethod": "PCM-sample-and-video-frame-locked",
+  "audioReview": "technical-sync-checked; final listening pending"
 }

@@ -1,13 +1,15 @@
 {
   "id": "nhn-05",
   "title": "Object Storage 활용",
-  "durationSeconds": 300.866667,
-  "bytes": 10196063,
-  "sha256": "e83f2aa13fd7b0a51760845855b05702325337b48d3373cf28609bf14cb6cfe0",
+  "durationSeconds": 304.26666666666665,
+  "bytes": 9780237,
+  "sha256": "0022a82443afb15a4dd33bb3095b436878756e0acc7bad4d503e73f2ab266fcd",
   "s3Key": "courses/2026-multicloud/nhn/05/v1/nhn-05.mp4",
   "captionKey": "courses/2026-multicloud/nhn/05/v1/captions-ko.vtt",
-  "status": "review-draft",
+  "status": "technically-verified; final listening pending",
   "serverUploaded": false,
   "decodeCheck": "passed",
-  "audioReview": "pending"
+  "audioReview": "pending",
+  "syncRevision": 2,
+  "syncCheck": "PCM/frame/encoded-speech/page-boundary passed"
 }

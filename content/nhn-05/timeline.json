@@ -1,55 +1,377 @@
 {
-  "duration": 300.866667,
+  "duration": 304.26666666666665,
+  "fps": 15,
+  "totalFrames": 4564,
+  "totalSamples": 7302400,
   "scenes": [
     {
       "scene": 1,
       "title": "서버 디스크와 객체 저장소의 차이",
-      "start": 0,
-      "duration": 36.768
+      "startFrame": 0,
+      "endFrame": 558,
+      "start": 0.0,
+      "duration": 37.2,
+      "voiceDuration": 36.768,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 0,
+          "endFrame": 123,
+          "text": "웹 서버의 디스크에 파일을 넣는 것과 오브젝트 스토리지에 저장하는 것은 용도와 접근 방식이 다릅니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 123,
+          "endFrame": 251,
+          "text": "오늘은 엔에이치엔의 컨테이너와 객체를 구분하고 작은 파일을 저장한 뒤 누가 읽을 수 있는지 확인합니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 251,
+          "endFrame": 374,
+          "text": "앞의 에스쓰리 실습과 공통 원리는 많지만 용어와 인증, 접근 정책이 완전히 같은 것은 아닙니다.",
+          "focus": 2
+        },
+        {
+          "startFrame": 374,
+          "endFrame": 469,
+          "text": "특히 에스쓰리 호환이라는 말은 모든 동작과 정책이 동일하다는 뜻이 아닙니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 469,
+          "endFrame": 558,
+          "text": "실제 지원 범위와 엔드포인트를 공식 안내에서 확인하겠습니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 2,
       "title": "컨테이너와 객체 경로 정리",
-      "start": 36.768,
-      "duration": 40.704
+      "startFrame": 558,
+      "endFrame": 1175,
+      "start": 37.2,
+      "duration": 41.13333333333333,
+      "voiceDuration": 40.704,
+      "audioSource": "regenerated",
+      "sentences": [
+        {
+          "startFrame": 558,
+          "endFrame": 636,
+          "text": "컨테이너는 객체를 담고 관리 설정을 적용하는 단위입니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 636,
+          "endFrame": 743,
+          "text": "그 안에서 객체 이름과 접두사를 정리해 강의별 자료나 실습 파일을 구분할 수 있습니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 743,
+          "endFrame": 850,
+          "text": "같은 이름으로 파일을 바꾸기 전에 어떤 버전인지와 기존 자료를 보관해야 하는지 확인하세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 850,
+          "endFrame": 967,
+          "text": "저장소 화면에 폴더처럼 보인다고 운영체제의 디렉터리와 모든 동작이 같다고 가정하지 않습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 967,
+          "endFrame": 1068,
+          "text": "자료를 찾지 못하면 컨테이너와 객체 경로, 프로젝트와 리전을 확인합니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 1068,
+          "endFrame": 1175,
+          "text": "업로드와 내려받기에 사용하는 경로를 정확히 기록하면 자동화에도 도움이 됩니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 3,
       "title": "PRIVATE와 PUBLIC의 차이",
-      "start": 77.47200000000001,
-      "duration": 39.792
+      "startFrame": 1175,
+      "endFrame": 1778,
+      "start": 78.33333333333333,
+      "duration": 40.2,
+      "voiceDuration": 39.792,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 1175,
+          "endFrame": 1266,
+          "text": "컨테이너의 접근 정책은 파일을 누가 읽을 수 있는지에 영향을 줍니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1266,
+          "endFrame": 1365,
+          "text": "프라이빗과 퍼블릭의 차이를 이해하고 이번 실습의 목표에 맞게 선택해야 합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1365,
+          "endFrame": 1470,
+          "text": "비공개 학습 자료를 저장하는데 주소가 안 열린다는 이유로 전체 공개로 바꾸지 마세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 1470,
+          "endFrame": 1553,
+          "text": "인증된 콘솔 접근과 익명 브라우저 요청은 주체가 다릅니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1553,
+          "endFrame": 1686,
+          "text": "제한된 시간 동안 접근시키는 방식이 필요하다면 해당 서비스가 제공하는 서명 주소 등의 기능과 조건을 확인합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1686,
+          "endFrame": 1778,
+          "text": "접근 권한을 담은 주소 역시 공개 게시물에 그대로 넣지 않습니다.",
+          "focus": 1
+        }
+      ]
     },
     {
       "scene": 4,
       "title": "문제 / 호환 API면 설정도 똑같을까?",
-      "start": 117.26400000000001,
-      "duration": 42.792
+      "startFrame": 1778,
+      "endFrame": 2426,
+      "start": 118.53333333333333,
+      "duration": 43.2,
+      "voiceDuration": 42.792,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 1778,
+          "endFrame": 1839,
+          "text": "에스쓰리 호환 에이피아이를 사용하려고 합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1839,
+          "endFrame": 1914,
+          "text": "에이는 엔드포인트와 인증, 지원 기능을 확인합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1914,
+          "endFrame": 1996,
+          "text": "비는 에이 더블유 에스 설정을 전부 그대로 적용한다고 가정합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1996,
+          "endFrame": 2031,
+          "text": "정답은 에이입니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2031,
+          "endFrame": 2147,
+          "text": "호환되는 작업이 있어도 주소와 자격 증명, 서명 방식과 옵션에 차이가 있을 수 있습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2147,
+          "endFrame": 2230,
+          "text": "예제 명령을 실행하기 전에 어떤 서비스를 대상으로 하는지 확인하세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 2230,
+          "endFrame": 2331,
+          "text": "필요하지 않은 키를 발급하거나 기존 키를 다른 서비스에 무작정 넣지 않습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2331,
+          "endFrame": 2426,
+          "text": "문서에서 지원 범위를 확인하고 작은 파일로 시험하는 것이 좋습니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 5,
       "title": "업로드 확인은 원본 비교까지",
-      "start": 160.056,
-      "duration": 35.856
+      "startFrame": 2426,
+      "endFrame": 2970,
+      "start": 161.73333333333332,
+      "duration": 36.266666666666666,
+      "voiceDuration": 35.856,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 2426,
+          "endFrame": 2523,
+          "text": "작은 파일을 업로드한 뒤 객체 이름과 크기, 콘텐츠 유형을 확인합니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 2523,
+          "endFrame": 2603,
+          "text": "인증된 경로로 읽은 내용이 원본과 맞는지도 확인하세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 2603,
+          "endFrame": 2707,
+          "text": "성공 메시지만 보고 다른 프로젝트나 컨테이너에 잘못 저장한 것을 놓치지 않도록 합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2707,
+          "endFrame": 2823,
+          "text": "스토리지의 웹 주소나 에이피아이 주소를 다른 종류의 엔드포인트와 혼동하지 않는 것도 중요합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2823,
+          "endFrame": 2970,
+          "text": "텍스트나 자막 파일이 잘못된 유형으로 제공되면 브라우저 표시가 달라질 수 있으니 실제 사용 목적에 맞게 확인합니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 6,
       "title": "정적 웹과 비공개 파일을 분리",
-      "start": 195.912,
-      "duration": 37.944
+      "startFrame": 2970,
+      "endFrame": 3546,
+      "start": 198.0,
+      "duration": 38.4,
+      "voiceDuration": 37.944,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 2970,
+          "endFrame": 3091,
+          "text": "오브젝트 스토리지에서 정적 웹 사이트를 제공하는 구성과 비공개 자료를 보관하는 구성은 구분해야 합니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 3091,
+          "endFrame": 3238,
+          "text": "공개 사이트에는 인덱스와 관련 파일이 맞는 경로에 있어야 하고, 서비스가 안내하는 접근 정책과 호스팅 설정이 필요합니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 3238,
+          "endFrame": 3333,
+          "text": "반대로 강의 보관 자료는 승인된 사용자에게만 제공하도록 설계할 수 있습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3333,
+          "endFrame": 3439,
+          "text": "한 컨테이너에서 서로 다른 목적을 무리하게 섞지 말고 운영자가 정한 범위를 따르세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 3439,
+          "endFrame": 3546,
+          "text": "에이 더블유 에스 실습에서도 저장과 제공을 나누었던 원리를 다시 적용합니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 7,
       "title": "직접 미션 / 한 파일의 두 접근",
-      "start": 233.856,
-      "duration": 38.16
+      "startFrame": 3546,
+      "endFrame": 4125,
+      "start": 236.4,
+      "duration": 38.6,
+      "voiceDuration": 38.16,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 3546,
+          "endFrame": 3637,
+          "text": "영상을 멈추고 개인정보 없는 파일 하나를 지정 컨테이너에 올려 보세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 3637,
+          "endFrame": 3720,
+          "text": "객체 경로와 크기를 기록하고 인증된 접근으로 내용을 확인합니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 3720,
+          "endFrame": 3803,
+          "text": "익명 브라우저 요청이 허용되는지 여부는 설정 목표와 비교합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3803,
+          "endFrame": 3904,
+          "text": "읽히지 않는 것이 의도한 비공개 상태인지, 실제 권한 오류인지 설명해 보세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 3904,
+          "endFrame": 4028,
+          "text": "제출물에는 현재 정책과 확인 주체, 결과를 적고 자격 증명과 서명 주소는 노출하지 않습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 4028,
+          "endFrame": 4125,
+          "text": "마지막으로 실습 파일을 보관할지 정리할지 운영자의 기준을 따릅니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 8,
       "title": "복습 / 이름보다 저장·권한의 역할",
-      "start": 272.01599999999996,
-      "duration": 28.824
+      "startFrame": 4125,
+      "endFrame": 4564,
+      "start": 275.0,
+      "duration": 29.266666666666666,
+      "voiceDuration": 28.824,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 4125,
+          "endFrame": 4239,
+          "text": "오늘은 엔에이치엔 오브젝트 스토리지에서 저장 단위와 경로, 접근 정책을 확인했습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 4239,
+          "endFrame": 4349,
+          "text": "에스쓰리와 비슷한 역할을 하더라도 인증과 엔드포인트, 지원 기능은 확인해야 합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 4349,
+          "endFrame": 4447,
+          "text": "파일이 저장되었는지와 누가 읽을 수 있는지를 각각 검증하는 습관을 유지하세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 4447,
+          "endFrame": 4564,
+          "text": "다음 강의에서는 엔에이치엔 데이터베이스의 내부 연결과 접근 제어를 살펴보겠습니다.",
+          "focus": 2
+        }
+      ]
     }
   ],
   "voice": "ko-KR-SunHiNeural",
-  "audioReview": "pending"
+  "timingMethod": "PCM-sample-and-video-frame-locked",
+  "audioReview": "technical-sync-checked; final listening pending"
 }

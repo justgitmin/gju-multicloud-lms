@@ -1,13 +1,15 @@
 {
   "id": "nhn-06",
   "title": "DB 서비스와 연결 구조",
-  "durationSeconds": 303.216,
-  "bytes": 10679444,
-  "sha256": "e39b50bd92b09c70a3345111185808b3845e615dd01ff35aa540161e351fee46",
+  "durationSeconds": 306.73333333333335,
+  "bytes": 10082372,
+  "sha256": "d389df7671929fa82035b5a777bdc15744ae57ca650f434a702a359e6edb75c8",
   "s3Key": "courses/2026-multicloud/nhn/06/v1/nhn-06.mp4",
   "captionKey": "courses/2026-multicloud/nhn/06/v1/captions-ko.vtt",
-  "status": "review-draft",
+  "status": "technically-verified; final listening pending",
   "serverUploaded": false,
   "decodeCheck": "passed",
-  "audioReview": "pending"
+  "audioReview": "pending",
+  "syncRevision": 2,
+  "syncCheck": "PCM/frame/encoded-speech/page-boundary passed"
 }

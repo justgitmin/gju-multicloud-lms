@@ -1,13 +1,15 @@
 {
   "id": "nhn-03",
   "title": "Instance 생성과 SSH 접속",
-  "durationSeconds": 306.2,
-  "bytes": 10066869,
-  "sha256": "015b68a1d2ff24a3a50d8a494e7ca146009f7383ae1564c209972cccc7148a5a",
+  "durationSeconds": 309.73333333333335,
+  "bytes": 9895784,
+  "sha256": "89c69093baef0b4cff5e1e97c7c0c85096b602e878dc768e3979b6ef311e14d8",
   "s3Key": "courses/2026-multicloud/nhn/03/v1/nhn-03.mp4",
   "captionKey": "courses/2026-multicloud/nhn/03/v1/captions-ko.vtt",
-  "status": "review-draft",
+  "status": "technically-verified; final listening pending",
   "serverUploaded": false,
   "decodeCheck": "passed",
-  "audioReview": "pending"
+  "audioReview": "pending",
+  "syncRevision": 2,
+  "syncCheck": "PCM/frame/encoded-speech/page-boundary passed"
 }

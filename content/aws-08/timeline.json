@@ -1,55 +1,395 @@
 {
-  "duration": 306.2,
+  "duration": 309.6666666666667,
+  "fps": 15,
+  "totalFrames": 4645,
+  "totalSamples": 7432000,
   "scenes": [
     {
       "scene": 1,
       "title": "잘 만들었다는 것을 어떻게 보여줄까?",
-      "start": 0,
-      "duration": 40.128
+      "startFrame": 0,
+      "endFrame": 608,
+      "start": 0.0,
+      "duration": 40.53333333333333,
+      "voiceDuration": 40.128,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 0,
+          "endFrame": 38,
+          "text": "실습을 마쳤습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 38,
+          "endFrame": 105,
+          "text": "생성된 자원 목록만 찍어서 제출하면 충분할까요?",
+          "focus": null
+        },
+        {
+          "startFrame": 105,
+          "endFrame": 215,
+          "text": "검토자는 어떤 서비스를 만들었는지뿐 아니라 실제로 무엇이 동작하는지 알고 싶습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 215,
+          "endFrame": 353,
+          "text": "오늘은 웹 접속 결과와 네트워크 설명, 저장소와 데이터베이스 확인 결과를 하나의 실습 기록으로 정리하겠습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 353,
+          "endFrame": 416,
+          "text": "그다음 자원을 보관할지 정리할지 구분합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 416,
+          "endFrame": 487,
+          "text": "실습 결과를 잘 설명하는 일도 운영 역량입니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 487,
+          "endFrame": 608,
+          "text": "복잡한 보고서보다 다른 사람이 결과와 한계를 이해할 수 있는 짧고 정확한 기록을 목표로 하세요.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 2,
       "title": "제출물은 네 가지 질문에 답하기",
-      "start": 40.128,
-      "duration": 40.08
+      "startFrame": 608,
+      "endFrame": 1216,
+      "start": 40.53333333333333,
+      "duration": 40.53333333333333,
+      "voiceDuration": 40.08,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 608,
+          "endFrame": 706,
+          "text": "제출 기록에는 목적과 구성, 검증 결과, 남은 항목을 담습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 706,
+          "endFrame": 812,
+          "text": "작은 웹 앱을 어느 서버에 배포했고 내부와 외부에서 어떻게 확인했는지 설명하세요.",
+          "focus": 1
+        },
+        {
+          "startFrame": 812,
+          "endFrame": 914,
+          "text": "스토리지 접근과 데이터베이스 연결은 허용된 범위에서 수행한 결과를 적습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 914,
+          "endFrame": 1014,
+          "text": "수행하지 못한 부분은 완료한 것처럼 쓰지 말고 권한이나 시간 등 이유를 기록합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1014,
+          "endFrame": 1125,
+          "text": "마지막으로 자원을 남겨 두었다면 다음 실습에서 재사용하는지, 누가 정리할지 적으세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 1125,
+          "endFrame": 1216,
+          "text": "성공 화면만 모으는 것보다 실제 상태를 설명하는 것이 중요합니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 3,
       "title": "증빙에 비밀정보가 없는지 확인",
-      "start": 80.208,
-      "duration": 36.528
+      "startFrame": 1216,
+      "endFrame": 1770,
+      "start": 81.06666666666666,
+      "duration": 36.93333333333333,
+      "voiceDuration": 36.528,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 1216,
+          "endFrame": 1276,
+          "text": "제출 전에 화면과 파일을 다시 확인합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1276,
+          "endFrame": 1405,
+          "text": "접속키나 비밀번호, 세션 토큰이 보이면 가리고, 비공개 파일의 서명 주소도 무심코 공개하지 마세요.",
+          "focus": 0
+        },
+        {
+          "startFrame": 1405,
+          "endFrame": 1498,
+          "text": "증빙 링크는 검토자가 접근할 수 있어야 하지만 누구나 볼 필요는 없습니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 1498,
+          "endFrame": 1561,
+          "text": "학교가 정한 제출 경로와 공유 범위를 따릅니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1561,
+          "endFrame": 1654,
+          "text": "주소만 적어 놓고 접근 권한을 확인하지 않으면 검토가 지연될 수 있습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1654,
+          "endFrame": 1770,
+          "text": "화면 설명에는 확인한 시각과 조건을 덧붙여 자료가 무엇을 증명하는지 분명하게 해 주세요.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 4,
       "title": "문제 / 서버 중지면 비용은 모두 끝?",
-      "start": 116.73599999999999,
-      "duration": 37.608
+      "startFrame": 1770,
+      "endFrame": 2341,
+      "start": 118.0,
+      "duration": 38.06666666666667,
+      "voiceDuration": 37.608,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 1770,
+          "endFrame": 1817,
+          "text": "실습 서버를 중지했습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1817,
+          "endFrame": 1867,
+          "text": "이제 모든 비용이 종료되었을까요?",
+          "focus": null
+        },
+        {
+          "startFrame": 1867,
+          "endFrame": 1976,
+          "text": "정답은 에이, 디스크와 데이터베이스, 주소와 백업 같은 잔여 자원도 확인해야 합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1976,
+          "endFrame": 2061,
+          "text": "자원별 과금 기준이 다르고 중지와 삭제는 같은 동작이 아닙니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2061,
+          "endFrame": 2131,
+          "text": "이씨투를 중지해도 관련 스토리지 등이 남을 수 있습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2131,
+          "endFrame": 2237,
+          "text": "라이트세일은 또 다른 과금 구조이므로 이씨투의 중지 규칙을 그대로 적용하지 마세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 2237,
+          "endFrame": 2341,
+          "text": "정확한 정리 대상은 실제 상품과 운영자가 정한 보관 기준을 따릅니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 5,
       "title": "정리 순서는 의존성을 따라",
-      "start": 154.344,
-      "duration": 39.024
+      "startFrame": 2341,
+      "endFrame": 2933,
+      "start": 156.06666666666666,
+      "duration": 39.46666666666667,
+      "voiceDuration": 39.024,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 2341,
+          "endFrame": 2429,
+          "text": "정리 전에는 다음 시간에 재사용할 자원과 삭제할 자원을 구분합니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 2429,
+          "endFrame": 2553,
+          "text": "데이터베이스나 디스크를 삭제하면 필요한 데이터도 잃을 수 있으므로 백업과 보관 기준을 먼저 확인하세요.",
+          "focus": 1
+        },
+        {
+          "startFrame": 2553,
+          "endFrame": 2688,
+          "text": "인스턴스, 볼륨, 공인 주소, 스냅샷과 데이터베이스 등 의존성이 있는 항목을 목록으로 정리합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2688,
+          "endFrame": 2801,
+          "text": "삭제가 거부되면 관계된 자원이 남아 있는지 살펴보고 무작정 보호 기능을 해제하지 않습니다.",
+          "focus": 2
+        },
+        {
+          "startFrame": 2801,
+          "endFrame": 2933,
+          "text": "다른 학생이나 팀이 함께 쓰는 네트워크와 데이터베이스는 내 실습이 끝났다고 임의로 삭제하면 안 됩니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 6,
       "title": "삭제 후에도 목록으로 재확인",
-      "start": 193.368,
-      "duration": 40.344
+      "startFrame": 2933,
+      "endFrame": 3545,
+      "start": 195.53333333333333,
+      "duration": 40.8,
+      "voiceDuration": 40.344,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 2933,
+          "endFrame": 3013,
+          "text": "삭제 버튼을 누른 뒤에는 목록과 상태를 다시 확인합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3013,
+          "endFrame": 3139,
+          "text": "비동기 작업이어서 바로 사라지지 않을 수 있고, 스냅샷이나 분리된 디스크는 따로 남아 있을 수 있습니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 3139,
+          "endFrame": 3259,
+          "text": "비용 화면은 반영에 시간이 걸릴 수 있으므로 즉시 영 원으로 보이는지만 기준으로 삼지 않습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3259,
+          "endFrame": 3336,
+          "text": "남아 있는 자원과 이유, 다음 확인 담당자를 기록하세요.",
+          "focus": 2
+        },
+        {
+          "startFrame": 3336,
+          "endFrame": 3439,
+          "text": "과금과 사용량을 정리하는 일은 단순히 종료 화면을 보는 것보다 넓은 작업입니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3439,
+          "endFrame": 3545,
+          "text": "문제를 발견했다면 추가로 만들지 말고 운영자에게 현재 상태를 전달합니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 7,
       "title": "직접 미션 / 제출과 정리 체크리스트",
-      "start": 233.712,
-      "duration": 37.584
+      "startFrame": 3545,
+      "endFrame": 4115,
+      "start": 236.33333333333334,
+      "duration": 38.0,
+      "voiceDuration": 37.584,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 3545,
+          "endFrame": 3628,
+          "text": "이제 영상을 멈추고 에이 더블유 에스 실습 제출물을 정리하세요.",
+          "focus": 2
+        },
+        {
+          "startFrame": 3628,
+          "endFrame": 3735,
+          "text": "웹 페이지 결과와 네트워크 설명, 수행한 저장소와 데이터베이스 확인 내용을 적습니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 3735,
+          "endFrame": 3807,
+          "text": "미완료 항목은 그 이유와 다음 조치를 기록합니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 3807,
+          "endFrame": 3894,
+          "text": "정리 대상과 보관 대상을 구분한 뒤 권한이 허용하는 자원만 처리하세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 3894,
+          "endFrame": 3978,
+          "text": "최종 제출 전에는 비밀정보와 공유 범위를 한 번 더 확인합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3978,
+          "endFrame": 4115,
+          "text": "내 기록만 보고 다른 사람이 무엇이 동작했고 무엇이 남았는지 설명할 수 있으면 미션을 잘 수행한 것입니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 8,
       "title": "다음 단계 / 같은 원리로 다른 클라우드",
-      "start": 271.296,
-      "duration": 34.896
+      "startFrame": 4115,
+      "endFrame": 4645,
+      "start": 274.3333333333333,
+      "duration": 35.333333333333336,
+      "voiceDuration": 34.896,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 4115,
+          "endFrame": 4182,
+          "text": "에이 더블유 에스 온라인 실습을 마무리했습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 4182,
+          "endFrame": 4299,
+          "text": "지금까지 컴퓨팅, 네트워크, 스토리지, 데이터베이스와 접근 권한을 연결했습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 4299,
+          "endFrame": 4401,
+          "text": "다음 엔에이치엔 클라우드 실습에서는 같은 작은 앱과 점검 방법을 사용합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 4401,
+          "endFrame": 4497,
+          "text": "상품명을 일대일로 외우기보다 같은 역할이 어떻게 구현되는지 비교해 보세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 4497,
+          "endFrame": 4645,
+          "text": "특히 권한과 주소, 네트워크와 과금 방식은 플랫폼마다 차이가 있으므로 확인한 근거를 남기는 습관을 이어가겠습니다.",
+          "focus": null
+        }
+      ]
     }
   ],
   "voice": "ko-KR-SunHiNeural",
-  "audioReview": "pending"
+  "timingMethod": "PCM-sample-and-video-frame-locked",
+  "audioReview": "technical-sync-checked; final listening pending"
 }
