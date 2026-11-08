@@ -159,3 +159,8 @@ media/
 __pycache__/
 video-output/
 test-results/
+
+# Operator lab credentials and private SSH keys
+.lab-state/
+infra/aws-lab/config.local.json
+__pycache__/
