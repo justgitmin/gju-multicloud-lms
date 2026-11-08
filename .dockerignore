@@ -4,3 +4,8 @@ node_modules
 .env*
 backups
 media
+
+.lab-state
+**/.lab-state
+infra/aws-lab/config.local.json
+infra/aws-lab/config.*.local.json
