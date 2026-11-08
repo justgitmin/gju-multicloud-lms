@@ -16,7 +16,8 @@
     "media:register": "node scripts/register-media.mjs",
     "db:seed-assessments": "node scripts/seed-assessments.mjs",
     "test:integration": "node tests/integration.pg.mjs",
-    "media:register-course": "node scripts/register-course-media.mjs"
+    "media:register-course": "node scripts/register-course-media.mjs",
+    "media:verify-course": "node scripts/verify-course-media.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1164.0",
