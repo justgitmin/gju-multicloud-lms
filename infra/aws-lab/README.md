@@ -131,3 +131,19 @@ python3 -m unittest discover -s infra/aws-lab -p 'test_*.py' -v
 - https://docs.aws.amazon.com/systems-manager/latest/userguide/getting-started-restrict-access-quickstart.html
 - https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-schema.html
 - https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sign-in.html
+
+## v3.1: 학생 LMS에 접속 정보 연결
+
+학생별 파일 수동 전달 대신 GUI의 **학생 LMS 이메일**을 입력해 설정을 저장하고, 아래 **학생 강의실과 연결**에서 한 번에 전송할 수 있습니다.
+
+- 먼저 LMS 서버에 HTTPS·암호화 키·DB 마이그레이션을 적용합니다.
+- LMS 관리자 → 실습 환경 배정에서 학생 이메일·과정 ID를 확인합니다. 학생은 해당 과정 수강 승인 상태여야 합니다.
+- 현재 관리자 LMS 비밀번호를 재확인해 **일회용 전송 토큰** 발급(15분 유효·성공 1회).
+- GUI에서 `https://lms.gju-boot.tbitcloud.com`과 과정 ID·토큰 입력 → 선택 학생을 LMS에 연결.
+- 학생은 내 강의실 → 내 AWS 실습 환경에서 로그인 링크/서버/문서/S3/DB와 개인 안내 다운로드를 이용합니다. 비밀번호는 LMS 비밀번호 재확인 후 제공합니다.
+- 전송은 기본 TLS 인증서 검증을 사용하고 리디렉션을 따라가지 않습니다. AWS 관리자 키는 전송하지 않습니다.
+- 전송 토큰은 GUI 파일에 저장하지 않습니다. 대체 JSON 내보내기에는 학생의 초기/DB 비밀번호가 포함되므로 LMS 관리자에게만 전달하세요.
+- AWS 생성과 LMS 연결은 별도 단계입니다. 생성 실패/미배정 환경은 자동으로 학생에게 공개하지 않습니다.
+- AWS 환경 삭제 시 먼저 LMS에서 열람 중지/배정 삭제를 하세요. 삭제 상태가 LMS에 자동 동기화되지는 않습니다.
+
+운영 적용 순서: [HTTPS 및 학생 연결 안내](../../docs/HTTPS_AND_STUDENT_LABS.md).
