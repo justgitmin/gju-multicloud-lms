@@ -1,0 +1,8 @@
+import Link from 'next/link';
+import {currentUser} from '../../lib/auth';
+import {logout} from '../actions';
+export async function PortalHeader({active='',guest=false}:{active?:string,guest?:boolean}){
+ const user=guest?null:await currentUser();
+ return <><a className="portal-skip" href="#portal-content">본문 바로가기</a><div className="portal-utility"><span>광주대학교 인공지능 부트캠프</span><span>{user?`${user.name}님 · ${user.role==='ADMIN'?'관리자':'수강생'}`:'멀티클라우드 온라인 학습관'}</span></div><header className="portal-header"><Link className="brand" href="/">GJU <span>CLOUD CAMPUS</span></Link><nav aria-label="주 메뉴"><Link href="/classroom" aria-current={active==='classroom'?'page':undefined}>내 강의실</Link><Link href="/#courses">교육과정</Link><Link href="/#guide">학습 안내</Link>{user?.role==='ADMIN'&&<><Link href="/admin" aria-current={active==='admin'?'page':undefined}>수강신청 관리</Link><Link href="/admin/learning" aria-current={active==='learning'?'page':undefined}>학습·실습 관리</Link></>}</nav>{user?<form action={logout} className="portal-session"><button className="smallbutton">로그아웃</button></form>:<Link href="/login" className="smallbutton">로그인</Link>}</header></>;
+}
+export function PortalFooter(){return <footer className="portal-footer"><div><b>GJU CLOUD CAMPUS</b><span>광주대학교 인공지능 부트캠프 · 멀티클라우드 학습관</span></div><nav aria-label="하단 메뉴"><Link href="/#guide">학습 안내</Link><Link href="/privacy">개인정보 수집·이용 안내</Link><Link href="/">홈으로</Link></nav></footer>;}
