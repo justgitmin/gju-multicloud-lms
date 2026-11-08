@@ -24,7 +24,7 @@ npm run dev
 ## 초기 데이터
 - ADMIN_EMAIL/ADMIN_PASSWORD를 프로세스 환경에 설정한 뒤 `npm run db:setup`. 기존 계정의 권한·비밀번호는 바꾸지 않습니다.
 - `npm run db:seed-lessons`, `npm run db:seed-assessments`로 기본 과정 콘텐츠 레코드를 준비합니다.
-- S3에 전체 영상·자막을 수동 업로드한 뒤 `npm run media:register-course`. 파일 존재·영상 크기 확인이 모두 성공한 후 DB에 등록합니다. 원격 전체 파일 해시까지 검증하는 명령은 아닙니다.
+- S3에 전체 영상·자막을 수동 업로드한 뒤 `npm run media:register-course`. 영상과 자막의 전체 SHA-256·크기·Content-Type 확인이 모두 성공한 후 DB에 등록합니다. `npm run media:verify-course`는 동일한 검사만 수행하며 DB를 변경하지 않습니다.
 - 호스트의 AWS CLI 프로필은 Docker에 자동 전달되지 않습니다. 컨테이너의 제한된 자격 증명 설정이 필요합니다.
 
 ## 검증
@@ -43,7 +43,7 @@ npm run typecheck
 - [구현·검증 기록](docs/IMPLEMENTATION.md)
 - [영상 제작 방식](docs/VIDEO_PRODUCTION.md)
 
-수동 업로드용 ZIP은 압축을 푼 후 **S3 버킷 최상위에서 courses 폴더**를 올립니다. 버킷 비공개 설정은 유지합니다. 01/02 파일이 같은 경로에 이미 있다면 중복 업로드 여부를 확인하고 자막을 추가합니다.
+수동 업로드용 ZIP은 압축을 푼 후 **S3 버킷 최상위에서 courses 폴더**를 올립니다. 버킷 비공개 설정은 유지합니다. 자막 교정본은 01/02를 포함해 전체 MP4와 VTT를 함께 덮어씁니다.
 
 ## 이수 기준과 한계
 모든 현재 버전 영상 95% 이상, 필수 실습 전체 통과, 현재 버전 평가별 70점 이상이면 온라인 기준 충족입니다. 학교의 대면 출석·최종 프로젝트를 포함한 공식 수료 확정과는 구분합니다.
