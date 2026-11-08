@@ -21,11 +21,11 @@ def arrow(d,points,active=False):
  else:d.polygon([(x,y),(x-10,y+16),(x+10,y+16)],fill=color)
 
 def draw_visual(d,scene,fonts,index,total):
- kind=scene['visual'];stage=scene.get('stage',0);step=min(3,index*4//max(1,total))
+ kind=scene['visual'];stage=scene.get('stage',0);step=scene.get('_focus') if scene.get('_focus') is not None else -1
  # The sentence progress marker and focus card change together with narration.
  d.rounded_rectangle((100,360,650,805),radius=20,fill='#e8eee7')
- bullets=scene['bullets'];highlight=min(len(bullets)-1,index*len(bullets)//max(1,total))
- d.text((130,385),'POINT / '+str(highlight+1),font=fonts[22],fill='#9d661f')
+ bullets=scene['bullets'];highlight=scene.get('_focus') if scene.get('_focus') is not None else -1
+ d.text((130,385),('POINT / '+str(highlight+1)) if highlight>=0 else 'LISTEN / 현재 설명',font=fonts[22],fill='#9d661f')
  for i,bullet in enumerate(bullets):
   y=440+i*110;color='#183f2e' if i==highlight else '#788a7d'
   if i==highlight:d.rounded_rectangle((115,y-6,124,y+65),radius=4,fill='#d79835')
@@ -34,7 +34,7 @@ def draw_visual(d,scene,fonts,index,total):
   d.rounded_rectangle((700,360,1820,805),radius=20,fill='#173c30')
   qlines=lines(d,scene['question'],fonts[34],1010)
   for i,line in enumerate(qlines):d.text((745,395+i*50),line,font=fonts[34],fill='white')
-  reveal='정답' in scene.get('_caption','') or scene.get('_revealed',False)
+  reveal=scene.get('_revealed',False)
   for i,option in enumerate(scene['options']):
    y=535+i*105;answer=reveal and i==scene['answer']
    d.rounded_rectangle((740,y,1780,y+80),radius=12,fill='#d9ad5c' if answer else '#2d5142')
@@ -53,7 +53,7 @@ def draw_visual(d,scene,fonts,index,total):
   d.rounded_rectangle((700,360,1820,805),radius=20,fill='#fff',outline='#c8d8ce',width=2)
   d.text((750,400),'PAUSE / 직접 확인하기',font=fonts[54],fill='#1c523c')
   for i,text in enumerate(scene['bullets'][:3]):
-   d.text((765,510+i*75),text,font=fonts[34],fill='#234c37' if i<=highlight else '#9eaca1')
+   d.text((765,510+i*75),text,font=fonts[34],fill='#234c37' if i==highlight else '#6b7b70')
   d.text((750,755),'영상을 멈추고 수행한 뒤 결과를 확인하세요.',font=fonts[22],fill='#6a7b70')
  elif kind=='recap':
   for i,subtitle in enumerate(scene['bullets'][:3]):
@@ -70,7 +70,7 @@ def draw_visual(d,scene,fonts,index,total):
    box(d,(1110,650,1450,785),'DB Subnet','10.20.2.0/24',fonts,step==3)
   if stage>=3:
    box(d,(1510,450,1785,585),'IGW','VPC 경계 연결',fonts,step==1)
-   arrow(d,[(1020,515),(1060,430),(1645,430),(1645,450)],step<=1)
+   arrow(d,[(1020,515),(1060,430),(1645,430),(1645,450)],0<=step<=1)
    arrow(d,[(1510,535),(1450,535)],step==2)
   if stage>=5:
    d.text((1490,635),'인터넷 경로 + 공인 IPv4',font=fonts[22],fill='#946321')

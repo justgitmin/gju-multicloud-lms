@@ -1,13 +1,15 @@
 {
   "id": "aws-05",
   "title": "S3 업로드와 접근 권한",
-  "durationSeconds": 306.733333,
-  "bytes": 10369477,
-  "sha256": "1369a505536886a3d5c23af90fec4b9dc7ce857176d66707852be60935d8d3fe",
+  "durationSeconds": 310.1333333333333,
+  "bytes": 10081326,
+  "sha256": "4ada52b2dad0a1676f42c8418cbea864b21f005d5634f12a82bd84e70bfad26a",
   "s3Key": "courses/2026-multicloud/aws/05/v1/aws-05.mp4",
   "captionKey": "courses/2026-multicloud/aws/05/v1/captions-ko.vtt",
-  "status": "review-draft",
+  "status": "technically-verified; final listening pending",
   "serverUploaded": false,
   "decodeCheck": "passed",
-  "audioReview": "pending"
+  "audioReview": "pending",
+  "syncRevision": 2,
+  "syncCheck": "PCM/frame/encoded-speech/page-boundary passed"
 }

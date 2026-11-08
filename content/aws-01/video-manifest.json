@@ -1,13 +1,15 @@
 {
   "id": "aws-01",
   "title": "실습 시작과 계정·비용 확인",
-  "durationSeconds": 348.144,
-  "bytes": 6333066,
-  "sha256": "e72884be2555a8061362153f6ac6af29fdde22dc0ef6d698f8376b2a3a719446",
+  "durationSeconds": 351.6666666666667,
+  "bytes": 9984660,
+  "sha256": "9fb145e2525a58a382c4b90df0fcb6d825167d919439a8e3268ab5995aeb1eca",
   "s3Key": "courses/2026-multicloud/aws/01/v1/aws-01.mp4",
   "captionKey": "courses/2026-multicloud/aws/01/v1/captions-ko.vtt",
-  "status": "review-draft",
+  "status": "technically-verified; final listening pending",
   "serverUploaded": false,
   "decodeCheck": "passed",
-  "audioReview": "pending"
+  "audioReview": "pending",
+  "syncRevision": 2,
+  "syncCheck": "PCM/frame/encoded-speech/page-boundary passed"
 }

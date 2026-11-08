@@ -1,55 +1,395 @@
 {
-  "duration": 306.733333,
+  "duration": 310.1333333333333,
+  "fps": 15,
+  "totalFrames": 4652,
+  "totalSamples": 7443200,
   "scenes": [
     {
       "scene": 1,
       "title": "파일이 올라갔는데 왜 403일까?",
-      "start": 0,
-      "duration": 38.592
+      "startFrame": 0,
+      "endFrame": 585,
+      "start": 0.0,
+      "duration": 39.0,
+      "voiceDuration": 38.592,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 0,
+          "endFrame": 46,
+          "text": "파일 업로드에 성공했습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 46,
+          "endFrame": 124,
+          "text": "그런데 객체 주소를 브라우저에 붙여 넣으니 접근이 거부됩니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 124,
+          "endFrame": 165,
+          "text": "업로드가 실패한 걸까요?",
+          "focus": null
+        },
+        {
+          "startFrame": 165,
+          "endFrame": 203,
+          "text": "꼭 그렇지는 않습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 203,
+          "endFrame": 286,
+          "text": "파일을 저장하는 권한과 그 파일을 읽을 수 있는 권한은 별개입니다.",
+          "focus": 2
+        },
+        {
+          "startFrame": 286,
+          "endFrame": 414,
+          "text": "이번 시간에는 버킷, 객체 키, 접근 권한을 구분하고 비공개 파일을 의도한 방식으로 확인하겠습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 414,
+          "endFrame": 585,
+          "text": "특히 이번 강의 영상 보관 버킷처럼 학생에게 제한적으로 제공할 자료는, 주소만 안다고 누구나 읽을 수 있도록 만들지 않는 것이 중요합니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 2,
       "title": "버킷과 객체 키를 주소처럼 읽기",
-      "start": 38.592,
-      "duration": 40.56
+      "startFrame": 585,
+      "endFrame": 1200,
+      "start": 39.0,
+      "duration": 41.0,
+      "voiceDuration": 40.56,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 585,
+          "endFrame": 651,
+          "text": "에스쓰리에서는 버킷 안에 객체를 저장합니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 651,
+          "endFrame": 704,
+          "text": "객체 키는 파일의 전체 이름입니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 704,
+          "endFrame": 822,
+          "text": "화면에서는 폴더처럼 보이지만, 슬래시가 포함된 접두사로 이름을 구성해 자료를 나눌 수 있습니다.",
+          "focus": 2
+        },
+        {
+          "startFrame": 822,
+          "endFrame": 945,
+          "text": "예를 들어 코시스 아래 과정과 강의, 버전별 경로를 두면 같은 이름의 영상도 구분할 수 있습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 945,
+          "endFrame": 1080,
+          "text": "운영체제의 폴더 구조와 모든 동작이 같은 것은 아니므로, 내려받기나 자동 업로드에서는 정확한 키를 사용하세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 1080,
+          "endFrame": 1200,
+          "text": "파일이 보이지 않으면 버킷과 리전뿐 아니라 검색 접두사와 경로의 대소문자도 확인합니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 3,
       "title": "비공개를 기본으로 시작하기",
-      "start": 79.152,
-      "duration": 36.504
+      "startFrame": 1200,
+      "endFrame": 1754,
+      "start": 80.0,
+      "duration": 36.93333333333333,
+      "voiceDuration": 36.504,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 1200,
+          "endFrame": 1262,
+          "text": "실습에서는 비공개를 기본으로 시작합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1262,
+          "endFrame": 1390,
+          "text": "퍼블릭 액세스 차단과 객체 소유권 설정을 확인하고, 접근이 안 된다고 곧바로 모두 공개하지 마세요.",
+          "focus": 0
+        },
+        {
+          "startFrame": 1390,
+          "endFrame": 1503,
+          "text": "사용자의 작업 권한은 아이엠 정책과 버킷 정책 등 여러 설정의 영향을 받을 수 있습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1503,
+          "endFrame": 1597,
+          "text": "객체를 올렸다고 그 객체를 모든 사용자에게 제공해야 하는 것은 아닙니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1597,
+          "endFrame": 1754,
+          "text": "콘솔에서 인증된 내 계정으로 확인하는 것과 로그아웃한 브라우저에서 주소로 확인하는 것은 접근 주체가 다르다는 점을 구분하세요.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 4,
       "title": "문제 / 교육 영상이라면 모두 공개?",
-      "start": 115.656,
-      "duration": 42.624
+      "startFrame": 1754,
+      "endFrame": 2400,
+      "start": 116.93333333333334,
+      "duration": 43.06666666666667,
+      "voiceDuration": 42.624,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 1754,
+          "endFrame": 1830,
+          "text": "비공개 교육 영상의 객체 주소가 접근 거부를 반환합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1830,
+          "endFrame": 1886,
+          "text": "에이는 버킷 전체를 즉시 공개합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1886,
+          "endFrame": 1968,
+          "text": "비는 인증과 권한, 영상을 제공하는 경로부터 확인합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1968,
+          "endFrame": 2003,
+          "text": "정답은 비입니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2003,
+          "endFrame": 2096,
+          "text": "비공개 파일을 익명 요청으로 열 수 없는 것은 의도한 동작일 수 있습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2096,
+          "endFrame": 2194,
+          "text": "접근을 허용해야 하는 대상이 운영자인지 승인된 학생인지 먼저 정해야 합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2194,
+          "endFrame": 2291,
+          "text": "학생에게는 로그인 검증 후 만료되는 접근 권한을 제공하는 구성이 가능합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2291,
+          "endFrame": 2400,
+          "text": "저장소 전체 공개는 간단해 보여도 원래의 수강 권한 설계를 무너뜨릴 수 있습니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 5,
       "title": "업로드 후 크기·유형·내용 확인",
-      "start": 158.28,
-      "duration": 38.184
+      "startFrame": 2400,
+      "endFrame": 2979,
+      "start": 160.0,
+      "duration": 38.6,
+      "voiceDuration": 38.184,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 2400,
+          "endFrame": 2468,
+          "text": "업로드 버튼이 성공했다고 바로 끝내지 않습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2468,
+          "endFrame": 2576,
+          "text": "저장한 키와 파일 크기를 원본과 비교하고, 영상이나 자막의 콘텐츠 유형을 확인합니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 2576,
+          "endFrame": 2703,
+          "text": "엠피포는 영상 유형으로, 웹브이티티는 자막 유형으로 제공해야 브라우저가 의도대로 처리하기 쉽습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2703,
+          "endFrame": 2804,
+          "text": "인증된 경로로 내려받은 파일이 실제 원본과 같은지 확인하면 더 확실합니다.",
+          "focus": 2
+        },
+        {
+          "startFrame": 2804,
+          "endFrame": 2872,
+          "text": "체크섬을 사용할 때는 비교 방식도 맞추어야 합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2872,
+          "endFrame": 2979,
+          "text": "특히 멀티파트 업로드의 이태그를 언제나 단순한 파일 해시라고 가정하면 안 됩니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 6,
       "title": "정적 사이트와 강의 보관을 구분",
-      "start": 196.464,
-      "duration": 38.28
+      "startFrame": 2979,
+      "endFrame": 3560,
+      "start": 198.6,
+      "duration": 38.733333333333334,
+      "voiceDuration": 38.28,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 2979,
+          "endFrame": 3061,
+          "text": "정적 웹 사이트 호스팅과 비공개 영상 보관은 다른 용도입니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3061,
+          "endFrame": 3187,
+          "text": "정적 페이지를 제공할 때는 인덱스 문서뿐 아니라 스타일과 스크립트, 이미지도 맞는 경로에 있어야 합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3187,
+          "endFrame": 3353,
+          "text": "에스쓰리 웹 사이트 엔드포인트는 일반 객체 접근이나 비공개 원본 구성과 다르며, 에이치티티피에스 제공에는 별도 호스팅 구성이 필요합니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 3353,
+          "endFrame": 3443,
+          "text": "이번 강의 보관 버킷을 정적 사이트 실습 때문에 공개로 바꾸지 마세요.",
+          "focus": 2
+        },
+        {
+          "startFrame": 3443,
+          "endFrame": 3560,
+          "text": "공개용 예제 사이트가 필요하다면 별도 실습 버킷과 정해진 접근 정책으로 진행합니다.",
+          "focus": 2
+        }
+      ]
     },
     {
       "scene": 7,
       "title": "직접 미션 / 비공개 파일 확인",
-      "start": 234.744,
-      "duration": 38.376
+      "startFrame": 3560,
+      "endFrame": 4142,
+      "start": 237.33333333333334,
+      "duration": 38.8,
+      "voiceDuration": 38.376,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 3560,
+          "endFrame": 3642,
+          "text": "영상을 멈추고 개인정보가 없는 작은 텍스트 파일을 준비하세요.",
+          "focus": 0
+        },
+        {
+          "startFrame": 3642,
+          "endFrame": 3734,
+          "text": "지정 버킷의 본인 실습 접두사에 올리고 정확한 키와 크기를 기록합니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 3734,
+          "endFrame": 3798,
+          "text": "콘솔이나 허용된 인증 도구로 내용을 확인하세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 3798,
+          "endFrame": 3887,
+          "text": "익명 주소로 열리지 않는다면 설정 목표에 맞는 결과인지 판단합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3887,
+          "endFrame": 4043,
+          "text": "제출에는 어떤 주체가 어떤 경로로 읽었는지 적고, 비밀번호나 서명 주소처럼 접근 권한을 담은 정보는 그대로 공개하지 않습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 4043,
+          "endFrame": 4142,
+          "text": "마지막으로 이 파일을 보관할지 삭제할지는 운영자의 정리 기준을 따르세요.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 8,
       "title": "복습 / 저장과 제공을 나누자",
-      "start": 273.12,
-      "duration": 33.6
+      "startFrame": 4142,
+      "endFrame": 4652,
+      "start": 276.1333333333333,
+      "duration": 34.0,
+      "voiceDuration": 33.6,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 4142,
+          "endFrame": 4206,
+          "text": "오늘의 핵심은 저장과 제공을 나누는 것입니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 4206,
+          "endFrame": 4328,
+          "text": "파일이 잘 저장되었는지, 누가 읽을 수 있는지, 어떤 경로로 제공할 것인지를 각각 확인합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 4328,
+          "endFrame": 4408,
+          "text": "접근 거부를 모두 장애로 보거나 공개 설정으로 해결하지 마세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 4408,
+          "endFrame": 4518,
+          "text": "객체 경로와 버전을 정리해 두면 콘텐츠를 수정하거나 이전 자료를 추적하기도 편해집니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 4518,
+          "endFrame": 4652,
+          "text": "다음 강의에서는 파일과 달리 구조화된 데이터를 관리하는 관계형 데이터베이스의 연결 조건을 살펴보겠습니다.",
+          "focus": 2
+        }
+      ]
     }
   ],
   "voice": "ko-KR-SunHiNeural",
-  "audioReview": "pending"
+  "timingMethod": "PCM-sample-and-video-frame-locked",
+  "audioReview": "technical-sync-checked; final listening pending"
 }

@@ -1,55 +1,407 @@
 {
-  "duration": 312.6,
+  "duration": 316.0,
+  "fps": 15,
+  "totalFrames": 4740,
+  "totalSamples": 7584000,
   "scenes": [
     {
       "scene": 1,
       "title": "서버에 들어가면 S3도 마음대로 쓸까?",
-      "start": 0,
-      "duration": 39.864
+      "startFrame": 0,
+      "endFrame": 604,
+      "start": 0.0,
+      "duration": 40.266666666666666,
+      "voiceDuration": 39.864,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 0,
+          "endFrame": 54,
+          "text": "서버에 에스에스에이치로 접속했습니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 54,
+          "endFrame": 140,
+          "text": "그러면 그 서버에서 에스쓰리의 모든 파일을 읽거나 지울 수 있을까요?",
+          "focus": null
+        },
+        {
+          "startFrame": 140,
+          "endFrame": 172,
+          "text": "그렇지 않습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 172,
+          "endFrame": 262,
+          "text": "운영체제 로그인 권한과 에이 더블유 에스 서비스 권한은 다른 층입니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 262,
+          "endFrame": 348,
+          "text": "어떤 주체가 어떤 자격 증명으로 요청하는지 먼저 확인해야 합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 348,
+          "endFrame": 499,
+          "text": "이번 시간에는 아이엠을 주체, 작업, 자원이라는 세 단어로 읽고, 실습 중 권한 오류를 어떻게 기록할지 정리하겠습니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 499,
+          "endFrame": 604,
+          "text": "관리자 권한을 넓게 주는 것보다 필요한 작업만 가능하도록 설계하는 것이 목표입니다.",
+          "focus": 1
+        }
+      ]
     },
     {
       "scene": 2,
       "title": "정책을 세 질문으로 읽기",
-      "start": 39.864,
-      "duration": 40.344
+      "startFrame": 604,
+      "endFrame": 1216,
+      "start": 40.266666666666666,
+      "duration": 40.8,
+      "voiceDuration": 40.344,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 604,
+          "endFrame": 698,
+          "text": "정책을 볼 때는 누가, 무엇을, 어디에라는 세 질문으로 시작합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 698,
+          "endFrame": 807,
+          "text": "파일을 올리는 작업과 내려받는 작업, 삭제하는 작업은 서로 다른 권한일 수 있습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 807,
+          "endFrame": 897,
+          "text": "버킷 목록을 조회하는 권한과 버킷 안의 객체를 읽는 권한도 구분됩니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 897,
+          "endFrame": 1008,
+          "text": "정책에 허용이 보이더라도 다른 정책의 명시적 거부나 조직의 제한 등이 적용될 수 있습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1008,
+          "endFrame": 1087,
+          "text": "그래서 한 줄의 허용만 보고 전체 결과를 단정하면 안 됩니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1087,
+          "endFrame": 1216,
+          "text": "이번 수업에서는 정책 문법을 외우기보다 실패한 요청의 주체와 작업, 자원을 기록하는 연습을 합니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 3,
       "title": "역할과 임시 자격 증명",
-      "start": 80.208,
-      "duration": 40.92
+      "startFrame": 1216,
+      "endFrame": 1836,
+      "start": 81.06666666666666,
+      "duration": 41.333333333333336,
+      "voiceDuration": 40.92,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 1216,
+          "endFrame": 1337,
+          "text": "에이 더블유 에스의 워크로드에는 가능한 경우 역할과 임시 자격 증명을 활용하는 방식이 권장됩니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 1337,
+          "endFrame": 1449,
+          "text": "애플리케이션 코드에 개인 액세스 키를 직접 적으면 코드 유출이나 교체 때 문제가 커집니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 1449,
+          "endFrame": 1556,
+          "text": "다만 모든 컴퓨팅 상품이 같은 방식의 인스턴스 역할 연결을 지원하는 것은 아닙니다.",
+          "focus": 2
+        },
+        {
+          "startFrame": 1556,
+          "endFrame": 1639,
+          "text": "이씨투와 라이트세일의 자격 증명 설정을 동일하다고 가정하지 마세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 1639,
+          "endFrame": 1724,
+          "text": "실제 서비스가 지원하는 인증 방법과 운영 정책을 확인해야 합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1724,
+          "endFrame": 1836,
+          "text": "키가 필요한 환경에서도 최소 권한, 안전한 저장, 교체 절차를 갖추어야 합니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 4,
       "title": "문제 / 업로드가 안 되면 관리자 권한?",
-      "start": 121.128,
-      "duration": 38.496
+      "startFrame": 1836,
+      "endFrame": 2420,
+      "start": 122.4,
+      "duration": 38.93333333333333,
+      "voiceDuration": 38.496,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 1836,
+          "endFrame": 1939,
+          "text": "지정 폴더에 영상을 업로드하고 결과를 확인하는 계정을 만든다고 가정해 보겠습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 1939,
+          "endFrame": 2000,
+          "text": "에이는 모든 서비스의 관리자 권한을 줍니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2000,
+          "endFrame": 2067,
+          "text": "비는 해당 저장 경로의 필요한 작업만 허용합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2067,
+          "endFrame": 2102,
+          "text": "정답은 비입니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2102,
+          "endFrame": 2206,
+          "text": "작업을 빠르게 끝내기 위한 넓은 권한은 나중에 다른 자원까지 변경할 위험을 만듭니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2206,
+          "endFrame": 2296,
+          "text": "삭제가 필요하지 않다면 삭제 권한도 당연히 포함해야 하는 것은 아닙니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2296,
+          "endFrame": 2420,
+          "text": "업로드가 실패하면 실제로 부족한 작업이 무엇인지 확인하고 필요한 범위만 조정하도록 요청하세요.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 5,
       "title": "오류 공유에 필요한 정보",
-      "start": 159.624,
-      "duration": 43.176
+      "startFrame": 2420,
+      "endFrame": 3074,
+      "start": 161.33333333333334,
+      "duration": 43.6,
+      "voiceDuration": 43.176,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 2420,
+          "endFrame": 2558,
+          "text": "권한 오류를 운영자에게 전달할 때는 어떤 작업을 어느 자원에 수행했는지, 언제 어떤 오류가 났는지를 정리합니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 2558,
+          "endFrame": 2661,
+          "text": "화면 전체를 그대로 보내는 것보다 관련 메시지와 조건을 설명하는 것이 유용합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2661,
+          "endFrame": 2780,
+          "text": "액세스 키, 세션 토큰, 비밀번호, 서명된 비공개 주소는 그대로 포함하지 않습니다.",
+          "focus": 2
+        },
+        {
+          "startFrame": 2780,
+          "endFrame": 2842,
+          "text": "로그에도 이런 값이 남지 않도록 주의하세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 2842,
+          "endFrame": 2987,
+          "text": "운영자는 실제 요청 주체와 적용 정책을 확인해야 하므로, 다른 계정의 화면이나 과거 메시지를 섞지 않는 것이 중요합니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 2987,
+          "endFrame": 3074,
+          "text": "수정 후에는 원래 실패했던 동일 작업으로 다시 확인합니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 6,
       "title": "운영 점검: 만들기 전과 후",
-      "start": 202.8,
-      "duration": 40.44
+      "startFrame": 3074,
+      "endFrame": 3687,
+      "start": 204.93333333333334,
+      "duration": 40.86666666666667,
+      "voiceDuration": 40.44,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 3074,
+          "endFrame": 3142,
+          "text": "운영 점검은 실습 마지막에만 하는 작업이 아닙니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3142,
+          "endFrame": 3232,
+          "text": "만들기 전에는 허용 범위와 권한, 비용과 이름 규칙을 확인합니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 3232,
+          "endFrame": 3318,
+          "text": "실행 중에는 서비스 상태와 로그, 외부 접근 결과를 확인합니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 3318,
+          "endFrame": 3397,
+          "text": "끝난 뒤에는 남은 자원과 임시 접근 권한을 점검합니다.",
+          "focus": 2
+        },
+        {
+          "startFrame": 3397,
+          "endFrame": 3499,
+          "text": "처음부터 이 세 단계로 기록하면 서비스가 잘될 때의 정상 상태도 남길 수 있습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3499,
+          "endFrame": 3592,
+          "text": "장애가 생기면 정상 기록과 비교하여 무엇이 바뀌었는지 찾기 쉽습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3592,
+          "endFrame": 3687,
+          "text": "불필요한 권한과 자원은 운영자 기준에 따라 정리하고 결과를 남기세요.",
+          "focus": 2
+        }
+      ]
     },
     {
       "scene": 7,
       "title": "직접 미션 / 권한 요청 한 줄",
-      "start": 243.24,
-      "duration": 40.344
+      "startFrame": 3687,
+      "endFrame": 4299,
+      "start": 245.8,
+      "duration": 40.8,
+      "voiceDuration": 40.344,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 3687,
+          "endFrame": 3761,
+          "text": "이번 미션은 실제 권한을 임의로 바꾸는 것이 아닙니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3761,
+          "endFrame": 3830,
+          "text": "내 실습에 필요한 권한 요청을 한 줄로 작성해 보세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 3830,
+          "endFrame": 3920,
+          "text": "누가 어떤 작업을 어느 경로에 수행해야 하고, 왜 필요한지를 적습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 3920,
+          "endFrame": 4026,
+          "text": "예를 들어 실습 업로더가 본인 폴더에 객체를 저장하고 확인해야 한다고 설명할 수 있습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 4026,
+          "endFrame": 4106,
+          "text": "관리자 권한을 달라는 요청 대신 작업과 자원을 구체화하세요.",
+          "focus": null
+        },
+        {
+          "startFrame": 4106,
+          "endFrame": 4180,
+          "text": "실제 변경은 운영자의 정책과 승인 절차를 따릅니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 4180,
+          "endFrame": 4299,
+          "text": "작성한 요청이 다른 학생의 자원까지 포함하는지 스스로 점검하면 미션을 마칠 수 있습니다.",
+          "focus": null
+        }
+      ]
     },
     {
       "scene": 8,
       "title": "복습 / 편리함보다 필요한 범위",
-      "start": 283.584,
-      "duration": 28.992
+      "startFrame": 4299,
+      "endFrame": 4740,
+      "start": 286.6,
+      "duration": 29.4,
+      "voiceDuration": 28.992,
+      "audioSource": "verified-cache",
+      "sentences": [
+        {
+          "startFrame": 4299,
+          "endFrame": 4375,
+          "text": "오늘은 운영체제 접속과 클라우드 권한을 구분했습니다.",
+          "focus": 0
+        },
+        {
+          "startFrame": 4375,
+          "endFrame": 4456,
+          "text": "권한 문제에서는 요청 주체와 작업, 자원을 함께 봅니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 4456,
+          "endFrame": 4568,
+          "text": "역할을 활용할 수 있는 서비스인지 확인하고, 키나 토큰을 코드와 제출물에 포함하지 않습니다.",
+          "focus": null
+        },
+        {
+          "startFrame": 4568,
+          "endFrame": 4740,
+          "text": "다음 강의에서는 지금까지 만든 결과를 다른 사람이 검토할 수 있는 형태로 제출하고, 실습 자원을 안전하게 정리하는 방법을 마무리하겠습니다.",
+          "focus": null
+        }
+      ]
     }
   ],
   "voice": "ko-KR-SunHiNeural",
-  "audioReview": "pending"
+  "timingMethod": "PCM-sample-and-video-frame-locked",
+  "audioReview": "technical-sync-checked; final listening pending"
 }
