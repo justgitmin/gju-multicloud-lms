@@ -1,0 +1,14 @@
+'use client';
+import {useEffect,useState} from 'react';
+import type {LabPublic,LabSecret} from '../../../lib/lab-secrets.mjs';
+export default function LabPanel({info,courseId}:{info:LabPublic,courseId:string}){
+ const [password,setPassword]=useState(''),[secret,setSecret]=useState<LabSecret|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ useEffect(()=>{if(!secret)return;const timer=setTimeout(()=>setSecret(null),90000);return()=>clearTimeout(timer);},[secret]);
+ async function reveal(mode:'view'|'download'){
+  setBusy(true);setError('');try{const r=await fetch('/api/lab-access',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({courseId,password,mode})});const d=await r.json();setPassword('');if(!r.ok)throw new Error(d.error);
+   if(mode==='view')setSecret(d.secrets);
+   else {const lines=['본인 AWS 실습 접속 안내',`사용자: ${info.username}`,`콘솔: https://${info.accountId}.signin.aws.amazon.com/console/`,`최초 로그인 비밀번호: ${d.secrets.initialPassword}`,'이미 변경한 비밀번호는 자동 동기화되지 않습니다.',`서버: ${info.instanceId}`,`세션 문서: ${info.sessionDocument}`,`브라우저 접속: https://${info.region}.console.aws.amazon.com/systems-manager/session-manager/start-session?region=${info.region}&target=${info.instanceId}&documentName=${info.sessionDocument}`];if(info.bucketName)lines.push(`S3: https://s3.console.aws.amazon.com/s3/buckets/${info.bucketName}?region=${info.region}&prefix=practice/&showversions=false`);if(info.dbEndpoint)lines.push(`DB: ${info.dbEndpoint}`,'DB 이름: labdb / 사용자: labadmin',`DB 비밀번호: ${d.secrets.dbPassword}`);lines.push('본인만 보관하고 공개 게시하지 마세요.');const url=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=info.labId+'-'+info.studentCode+'-private.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  }catch(e){setError(e instanceof Error?e.message:'요청을 처리하지 못했습니다.');}finally{setPassword('');setBusy(false);}
+ }
+ return <section className="card"><h2>비밀번호 확인 · 개인 안내 다운로드</h2><p>보안을 위해 <b>LMS 로그인 비밀번호</b>를 다시 입력하세요. AWS 비밀번호를 입력하는 곳이 아닙니다.</p><form className="assessmentform" onSubmit={e=>{e.preventDefault();void reveal('view');}}><label>LMS 비밀번호<input type="password" autoComplete="current-password" required maxLength={128} value={password} onChange={e=>setPassword(e.target.value)}/></label><div className="review"><button type="submit" disabled={busy}>비밀번호 확인</button><button type="button" disabled={busy||!password} onClick={()=>void reveal('download')}>내 접속 안내 다운로드</button><button type="button" onClick={()=>setSecret(null)}>내용 숨기기</button></div></form>{error&&<p role="alert" className="error">{error}</p>}{secret&&<div className="lab-secret" aria-live="polite"><p>최초 AWS 비밀번호: <code>{secret.initialPassword}</code></p>{secret.dbPassword&&<p>본인 DB 비밀번호: <code>{secret.dbPassword}</code></p>}<p>90초 뒤 화면에서 숨깁니다. 최초 AWS 비밀번호는 직접 변경한 새 값으로 동기화되지 않습니다.</p></div>}</section>;
+}
