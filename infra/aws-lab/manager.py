@@ -14,11 +14,14 @@ import subprocess
 import sys
 import threading
 import webbrowser
+from urllib.parse import urlparse
+from urllib.request import Request, build_opener, HTTPRedirectHandler
+from urllib.error import HTTPError
 
 import lab
 
 HERE = Path(__file__).resolve().parent
-ALLOWED_KEYS = {'lab_id','region','students','instance_type','volume_gb','s3','rds','db_class','ami_parameter','access_mode'}
+ALLOWED_KEYS = {'lab_id','region','students','instance_type','volume_gb','s3','rds','db_class','ami_parameter','access_mode','student_emails'}
 
 
 class Manager:
@@ -36,6 +39,10 @@ class Manager:
         c={k:v for k,v in raw.items() if k in ALLOWED_KEYS}
         if c.get('access_mode')!='ssm':raise ValueError('GUI는 IP 등록 없는 Session Manager 방식을 사용합니다.')
         # Validate in a temporary file outside the retained config before atomic replacement.
+        if 'student_emails' in c:
+            if not isinstance(c['student_emails'],dict):raise ValueError('학생 이메일 설정 형식 오류')
+            c['student_emails']={k:v for k,v in c['student_emails'].items() if k in c.get('students',[])}
+            if any(not isinstance(v,str) or len(v)>254 for v in c['student_emails'].values()):raise ValueError('학생 이메일을 확인하세요.')
         name=c.get('lab_id');path=self.path(name);tmp=path.with_suffix('.pending')
         try:
             tmp.write_text(json.dumps(c,indent=2),encoding='utf-8');os.chmod(tmp,0o600)
@@ -85,6 +92,43 @@ class Manager:
         with self.lock:self.job.update(running=False,exit_code=code)
     def job_state(self):
         with self.lock:return json.loads(json.dumps(self.job))
+    def batch(self,name,students,course_id):
+        c=self.read(name)
+        if not isinstance(course_id,str) or not course_id or len(course_id)>100:raise ValueError('LMS 관리자 화면의 과정 ID를 입력하세요.')
+        if not isinstance(students,list) or not students or len(students)!=len(set(students)) or any(x not in c['students'] for x in students):raise ValueError('전송할 학생을 선택하세요.')
+        entries=[];seen=set()
+        for student in students:
+            email=c.get('student_emails',{}).get(student,'').strip().lower()
+            if not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email) or len(email)>254 or email in seen:raise ValueError('선택한 학생들의 LMS 이메일을 중복 없이 입력하고 설정을 저장하세요.')
+            seen.add(email);folder=self.state/(name+'-'+student)
+            creds=json.loads((folder/'credentials.json').read_text(encoding='utf-8'))
+            outputs=json.loads((folder/'outputs.json').read_text(encoding='utf-8'))
+            if creds['username']!=name+'-'+student or outputs.get('Username')!=creds['username'] or outputs.get('SessionDocument')!=name+'-shell':raise ValueError('선택한 학생의 Session Manager 배포 자료가 일치하지 않습니다.')
+            entry={'email':email,'labId':name,'studentCode':student,'region':c['region'],'accountId':creds['account_id'],'username':creds['username'],'instanceId':outputs['InstanceId'],'sessionDocument':outputs['SessionDocument'],'initialPassword':creds['initial_password']}
+            if outputs.get('BucketName'):entry['bucketName']=outputs['BucketName']
+            if outputs.get('DbEndpoint'):entry.update(dbEndpoint=outputs['DbEndpoint'],dbPassword=creds['db_password'])
+            entries.append(entry)
+        return {'version':1,'courseId':course_id,'entries':entries}
+    def sync(self,name,students,course_id,origin,token):
+        with self.lock:
+            if self.job['running']:raise ValueError('AWS 작업이 끝난 뒤 전송하세요.')
+        parsed=urlparse(origin)
+        if parsed.scheme!='https' or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in ['', '/']:
+            raise ValueError('유효한 HTTPS LMS 주소만 입력하세요. 예: https://lms.example.com')
+        if not isinstance(token,str) or not re.fullmatch(r'[a-f0-9]{64}',token):raise ValueError('LMS 관리자가 발급한 15분 유효 일회용 토큰을 입력하세요.')
+        payload={'batch':self.batch(name,students,course_id)}
+        request=Request(origin.rstrip('/')+'/api/admin/lab-import',data=json.dumps(payload).encode('utf-8'),headers={'Content-Type':'application/json','Authorization':'Bearer '+token},method='POST')
+        class NoRedirect(HTTPRedirectHandler):
+            def redirect_request(self,*args):return None
+        # Default TLS certificate checks stay enabled. Never forward a token/secret to a redirect target.
+        try:
+            with build_opener(NoRedirect).open(request,timeout=60) as response:
+                result=json.loads(response.read(100000))
+        except HTTPError as error:
+            try:message=json.loads(error.read(20000)).get('error','LMS 전송 실패')
+            except Exception:message='LMS 주소·HTTPS·로그인 토큰을 확인하세요.'
+            raise ValueError(message) from None
+        return {'count':result.get('count'),'students':result.get('students',[])}
     def kit(self,name,student):
         c=self.read(name)
         if student not in c['students']:raise ValueError('알 수 없는 학생')
@@ -130,6 +174,8 @@ def make_handler(manager):
                 elif self.path=='/api/identity':out=manager.identity(d.get('profile',''))
                 elif self.path=='/api/job':out=manager.job_state()
                 elif self.path=='/api/start':out=manager.start(d['action'],d['name'],d['students'],d.get('profile',''),d.get('account',''),d.get('confirm',''))
+                elif self.path=='/api/sync':out=manager.sync(d['name'],d['students'],d['courseId'],d['origin'],d['token'])
+                elif self.path=='/api/export-batch':out=manager.batch(d['name'],d['students'],d['courseId'])
                 elif self.path=='/api/kit':out=manager.kit(d['name'],d['student'])
                 else:return self.reply(404,{'error':'Not found'})
                 self.reply(200,out)
