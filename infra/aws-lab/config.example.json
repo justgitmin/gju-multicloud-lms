@@ -1,12 +1,44 @@
 {
   "lab_id": "gju-2026",
   "region": "ap-northeast-2",
-  "students": ["s01", "s02", "s03", "s04", "s05", "s06", "s07", "s08", "s09", "s10", "s11", "s12", "s13", "s14", "s15"],
-  "ssh_cidr": "REPLACE_WITH_TRAINING_PUBLIC_IP/32",
+  "students": [
+    "s01",
+    "s02",
+    "s03",
+    "s04",
+    "s05",
+    "s06",
+    "s07",
+    "s08",
+    "s09",
+    "s10",
+    "s11",
+    "s12",
+    "s13",
+    "s14",
+    "s15"
+  ],
   "instance_type": "t3.micro",
   "volume_gb": 20,
   "s3": true,
   "rds": true,
   "db_class": "db.t4g.micro",
-  "ami_parameter": "/aws/service/canonical/ubuntu/server/noble/stable/current/amd64/hvm/ebs-gp3/ami-id"
+  "ami_parameter": "/aws/service/canonical/ubuntu/server/noble/stable/current/amd64/hvm/ebs-gp3/ami-id",
+  "ssh_cidrs": {
+    "s01": "REPLACE_WITH_S01_PUBLIC_IP/32",
+    "s02": "REPLACE_WITH_S02_PUBLIC_IP/32",
+    "s03": "REPLACE_WITH_S03_PUBLIC_IP/32",
+    "s04": "REPLACE_WITH_S04_PUBLIC_IP/32",
+    "s05": "REPLACE_WITH_S05_PUBLIC_IP/32",
+    "s06": "REPLACE_WITH_S06_PUBLIC_IP/32",
+    "s07": "REPLACE_WITH_S07_PUBLIC_IP/32",
+    "s08": "REPLACE_WITH_S08_PUBLIC_IP/32",
+    "s09": "REPLACE_WITH_S09_PUBLIC_IP/32",
+    "s10": "REPLACE_WITH_S10_PUBLIC_IP/32",
+    "s11": "REPLACE_WITH_S11_PUBLIC_IP/32",
+    "s12": "REPLACE_WITH_S12_PUBLIC_IP/32",
+    "s13": "REPLACE_WITH_S13_PUBLIC_IP/32",
+    "s14": "REPLACE_WITH_S14_PUBLIC_IP/32",
+    "s15": "REPLACE_WITH_S15_PUBLIC_IP/32"
+  }
 }
