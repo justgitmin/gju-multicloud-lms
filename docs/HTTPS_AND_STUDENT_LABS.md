@@ -124,3 +124,25 @@ Python 검사: 환경 설정·권한 템플릿·GUI HTTP 보호·이메일 배�
 PostgreSQL 통합 검사: `npm run test:lab-integration` (전용 테스트 DB, LMS_INTEGRATION_TEST=true). 실제 DB에서 단일 사용 토큰·원자적 롤백·소유자별 데이터·반려/회수 상태를 검증하도록 CI에 추가했습니다. 이 개발 환경에는 PostgreSQL이 없어 해당 통합 검사는 로컬 미실행이며 CI 결과를 확인해야 합니다.
 
 운영 DNS/인증서/실학생 배정의 실제 완료 판정은 위 운영 적용 후 수행합니다.
+
+## DNS 담당자 작업 전: HTTP 상태에서 미리 준비하기
+
+DNS를 다음 날 설정하는 경우 기존 HTTP 접속을 유지한 채 암호화 키와 새 DB 테이블을 준비할 수 있습니다. 이 단계는 인증서 발급이나 Caddy 설정 변경을 하지 않습니다.
+
+기존 LMS 서버 SSH에서 명령을 하나씩 성공 확인하며 실행:
+
+```bash
+cd ~/gju-multicloud-lms
+git pull --ff-only origin main
+python3 scripts/prepare-lab-access.py --apply
+bash scripts/backup.sh
+docker compose -f compose.yaml -f compose.prod.yaml build web tools
+docker compose -f compose.yaml -f compose.prod.yaml --profile tools run --rm tools npm run db:migrate
+docker compose -f compose.yaml -f compose.prod.yaml up -d --no-deps web
+```
+
+현재 IP의 HTTP 사이트에서 관리자 메뉴 **실습 환경 배정**이 표시되고 준비 안내가 나오는지 확인하세요. 비밀번호 전송/토큰/학생 비밀번호 조회는 HTTPS 적용 전까지 차단된 상태입니다. Caddy를 재생성하거나 도메인용으로 바꾸지 마세요.
+
+PC GUI는 소스를 갱신한 뒤 기존 환경을 불러와 실제 LMS 학생 이메일만 입력하고 설정을 저장할 수 있습니다. AWS 자원을 다시 생성하거나 HTTP 주소로 비밀번호를 전송하지 않습니다. 학생이 아직 가입하지 않았다면 임의의 이메일로 연결하지 말고 배정 목록만 준비하세요.
+
+DNS 작업 후 기존 HTTPS 설정 절차를 진행하면 이미 준비한 암호화 키를 유지합니다.
