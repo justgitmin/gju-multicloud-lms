@@ -1,6 +1,7 @@
 """Check rendered PCM/frame alignment and sentence coverage without network access."""
 import argparse,json,subprocess,wave
 from pathlib import Path
+from captions import display_caption
 from render_lesson import FPS,RATE,SAMPLES_PER_FRAME,validate_audio
 
 def audit(directory):
@@ -20,6 +21,7 @@ def audit(directory):
   if scene['startFrame']/FPS!=scene['start']:raise ValueError('Scene boundary is not frame locked')
   if scene['duration']-scene['voiceDuration']<.399:raise ValueError('No safe speech-ending hold')
   bounds=json.loads((path/f'scene-{i:02}.json').read_text())['boundaries']
+  if [s['text'] for s in scene['sentences']] != [display_caption(b['text']) for b in bounds]:raise ValueError('Display caption mismatch')
   if max(b['start']+b['duration'] for b in bounds)>scene['voiceDuration']+.18:raise ValueError('Speech end missing')
  subprocess.run(['ffmpeg','-v','error','-threads','1','-i',str(path/f'{id}.mp4'),'-f','null','-'],check=True)
  return {'id':id,'scenes':len(meta['scenes']),'duration':meta['duration'],'streamGapSeconds':gap,'PCMFrameLocked':True,'speechEndingCovered':True,'decode':'passed'}

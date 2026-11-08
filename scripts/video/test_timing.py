@@ -12,4 +12,16 @@ class TimingTests(unittest.TestCase):
  def test_focus_only_marks_a_unique_topic(self):
   self.assertEqual(focus_for('키페어와 개인 키를 확인합니다.',['네트워크 경로','키페어와 개인 키','웹 서비스']),1)
  def test_vtt_millisecond_rollover(self):self.assertEqual(timestamp(59.9999),'00:01:00.000')
+
+from captions import display_caption
+class CaptionTests(unittest.TestCase):
+ def test_cloud_names_and_particles(self):
+  self.assertEqual(display_caption('에이 더블유 에스의 브이피씨와 엔에이치엔 클라우드'), 'AWS의 VPC와 NHN Cloud')
+ def test_longest_terms_first(self):
+  self.assertEqual(display_caption('에이치티티피에스, 아이피 버전 사, 마이에스큐엘'), 'HTTPS, IPv4, MySQL')
+ def test_quiz_and_normal_korean(self):
+  self.assertEqual(display_caption('에이는 확인합니다. 정답은 비입니다. 비밀번호와 에이전트'), 'A는 확인합니다. 정답은 B입니다. 비밀번호와 에이전트')
+ def test_commands_addresses(self):
+  self.assertEqual(display_caption('에스에스에이치 마이너스 아이, 티씨피 이십이 번'), 'SSH -i, TCP 22번')
+
 if __name__=='__main__':unittest.main()

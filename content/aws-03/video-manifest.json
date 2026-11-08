@@ -2,14 +2,15 @@
   "id": "aws-03",
   "title": "Security Group과 SSH 접속",
   "durationSeconds": 319.1333333333333,
-  "bytes": 10427255,
-  "sha256": "cf70ac316a1bccb997ed32a713390feeb07c2dbed84549e57eaf46b3aacf22b8",
+  "bytes": 10479225,
+  "sha256": "b5c869fc119e4fcc86e63c48ac54adea76e85542673609e20ad8afdd66aa4540",
   "s3Key": "courses/2026-multicloud/aws/03/v1/aws-03.mp4",
   "captionKey": "courses/2026-multicloud/aws/03/v1/captions-ko.vtt",
   "status": "technically-verified; final listening pending",
   "serverUploaded": false,
   "decodeCheck": "passed",
   "audioReview": "pending",
-  "syncRevision": 2,
-  "syncCheck": "PCM/frame/encoded-speech/page-boundary passed"
+  "syncRevision": 3,
+  "syncCheck": "PCM/frame/encoded-speech/page-boundary passed",
+  "captionRevision": 1
 }

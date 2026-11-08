@@ -1,8 +1,7 @@
 {
   "verifiedVideos": 16,
-  "scenesChecked": 130,
-  "maximumAudioOffsetSeconds": 0.0,
-  "maximumStreamGapSeconds": 0.0003330000000119071,
+  "sceneBoundaries": 130,
+  "captionSentencesNormalized": 176,
   "results": [
     {
       "id": "aws-01",
@@ -14,7 +13,7 @@
       "decode": "passed",
       "sceneStartAudioMaxOffsetSeconds": 0.0,
       "minimumSpeechCorrelation": 0.9999766731254398,
-      "pageBoundaryMaxPixelError": 1.5571006944444445,
+      "pageBoundaryMaxPixelError": 1.5583854166666666,
       "pageBoundariesChecked": 8,
       "status": "passed"
     },
@@ -112,7 +111,7 @@
       "decode": "passed",
       "sceneStartAudioMaxOffsetSeconds": 0.0,
       "minimumSpeechCorrelation": 0.999946347500836,
-      "pageBoundaryMaxPixelError": 1.7339120370370371,
+      "pageBoundaryMaxPixelError": 1.7330324074074075,
       "pageBoundariesChecked": 8,
       "status": "passed"
     },
@@ -182,7 +181,7 @@
       "decode": "passed",
       "sceneStartAudioMaxOffsetSeconds": 0.0,
       "minimumSpeechCorrelation": 0.9999876271040559,
-      "pageBoundaryMaxPixelError": 1.7060648148148148,
+      "pageBoundaryMaxPixelError": 1.706556712962963,
       "pageBoundariesChecked": 8,
       "status": "passed"
     },
@@ -196,7 +195,7 @@
       "decode": "passed",
       "sceneStartAudioMaxOffsetSeconds": 0.0,
       "minimumSpeechCorrelation": 0.9999852883801407,
-      "pageBoundaryMaxPixelError": 1.746724537037037,
+      "pageBoundaryMaxPixelError": 1.746880787037037,
       "pageBoundariesChecked": 8,
       "status": "passed"
     },
@@ -210,7 +209,7 @@
       "decode": "passed",
       "sceneStartAudioMaxOffsetSeconds": 0.0,
       "minimumSpeechCorrelation": 0.9999827413288603,
-      "pageBoundaryMaxPixelError": 1.7358796296296297,
+      "pageBoundaryMaxPixelError": 1.7366435185185185,
       "pageBoundariesChecked": 8,
       "status": "passed"
     },
