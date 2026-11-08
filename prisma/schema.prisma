@@ -44,6 +44,7 @@ model Enrollment {
  progress Progress[]
  submissions Submission[]
  attempts QuizAttempt[]
+ labAccess LabAccess?
  @@unique([userId,courseId])
 }
 model Lesson {
@@ -149,4 +150,34 @@ model QuizAttempt {
  enrollment Enrollment @relation(fields:[enrollmentId],references:[id])
  quiz Quiz @relation(fields:[quizId],references:[id])
  @@index([enrollmentId,quizId,version])
+}
+
+model LabAccess {
+ id String @id @default(cuid())
+ enrollmentId String @unique
+ labId String
+ studentCode String
+ accountId String
+ publicData Json
+ secretData String
+ active Boolean @default(true)
+ updatedAt DateTime @updatedAt
+ enrollment Enrollment @relation(fields:[enrollmentId],references:[id],onDelete:Cascade)
+ @@unique([accountId,labId,studentCode])
+}
+model LabTransferToken {
+ id String @id @default(cuid())
+ tokenHash String @unique
+ adminId String
+ expiresAt DateTime
+ consumedAt DateTime?
+ @@index([expiresAt])
+}
+model LabAccessAudit {
+ id String @id @default(cuid())
+ actorId String
+ event String
+ assignmentId String?
+ createdAt DateTime @default(now())
+ @@index([createdAt])
 }
