@@ -12,6 +12,8 @@ spec.loader.exec_module(lab)
 class LabTests(unittest.TestCase):
     def setUp(self):
         self.c = lab.load_config(Path(__file__).with_name('config.example.json'))
+        self.c['lab_id'] = 'gju-2026'
+        self.c['access_mode'] = 'ssh'
         self.c['ssh_cidrs'] = {student:'8.8.8.8/32' for student in self.c['students']}
         self.t = lab.template(self.c, 's01')
     def test_no_shared_resource_writes(self):
@@ -105,5 +107,30 @@ class LabTests(unittest.TestCase):
             self.assertEqual(mock.call_count,3)
             self.assertIn('delete-stack',mock.call_args_list[1].args)
             self.assertIn('gju-2026-shared',mock.call_args_list[1].args)
+
+    def test_ssm_has_no_ssh_key_or_inbound_port(self):
+        self.c['access_mode']='ssm';self.c.pop('ssh_cidrs',None)
+        t=lab.template(self.c,'s01');r=t['Resources']
+        self.assertNotIn('Key',r);self.assertNotIn('KeyName',r['Web']['Properties'])
+        self.assertNotIn('PublicKey',t['Parameters']);self.assertNotIn('SshCidr',t['Parameters'])
+        self.assertTrue(all(x['FromPort']!=22 for x in r['WebSecurity']['Properties']['SecurityGroupIngress']))
+        self.assertIn('NodeRole',r);self.assertIn('NodeProfile',r)
+    def test_ssm_session_target_and_session_ownership_scoped(self):
+        self.c['access_mode']='ssm';t=lab.template(self.c,'s01')
+        statements=t['Resources']['Boundary']['Properties']['PolicyDocument']['Statement']
+        start=[x for x in statements if x['Action']=='ssm:StartSession'][0]
+        self.assertIn('instance/${Web}',start['Resource']['Fn::Sub'])
+        self.assertEqual(start['Condition'],{'BoolIfExists':{'ssm:SessionDocumentAccessCheck':'true'}})
+        channels=[x for x in statements if isinstance(x['Action'],list) and 'ssm:TerminateSession' in x['Action']][0]
+        self.assertIn('${!aws:username}-*',channels['Resource'][0]['Fn::Sub'])
+    def test_ssm_role_cannot_read_account_parameters(self):
+        self.c['access_mode']='ssm';role=lab.template(self.c,'s01')['Resources']['NodeRole']
+        actions=role['Properties']['Policies'][0]['PolicyDocument']['Statement'][0]['Action']
+        self.assertNotIn('ssm:GetParameter',actions);self.assertNotIn('ssm:GetParameters',actions)
+        self.assertNotIn('s3:GetObject',actions)
+    def test_ssm_document_does_not_override_default(self):
+        self.c['access_mode']='ssm';doc=lab.network_template(self.c)['Resources']['SessionDocument']
+        self.assertEqual(doc['Properties']['Name'],'gju-2026-shell')
+        self.assertNotEqual(doc['Properties']['Name'],'SSM-SessionManagerRunShell')
 
 if __name__=='__main__':unittest.main()
