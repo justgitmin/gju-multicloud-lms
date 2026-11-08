@@ -2,14 +2,15 @@
   "id": "aws-07",
   "title": "IAM 최소 권한과 운영 점검",
   "durationSeconds": 316.0,
-  "bytes": 10181913,
-  "sha256": "e429e523518dedf73faf4d21e656e6f03ba215d62265c823e563d1ed4617c3ea",
+  "bytes": 10163739,
+  "sha256": "060f7362e058349e62166eef05eac201d02dcbfaf1686974af94a2a6190f4781",
   "s3Key": "courses/2026-multicloud/aws/07/v1/aws-07.mp4",
   "captionKey": "courses/2026-multicloud/aws/07/v1/captions-ko.vtt",
   "status": "technically-verified; final listening pending",
   "serverUploaded": false,
   "decodeCheck": "passed",
   "audioReview": "pending",
-  "syncRevision": 2,
-  "syncCheck": "PCM/frame/encoded-speech/page-boundary passed"
+  "syncRevision": 3,
+  "syncCheck": "PCM/frame/encoded-speech/page-boundary passed",
+  "captionRevision": 1
 }

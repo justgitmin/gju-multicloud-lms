@@ -2,14 +2,15 @@
   "id": "aws-02",
   "title": "VPC·Subnet·라우팅 이해",
   "durationSeconds": 447.06666666666666,
-  "bytes": 14365727,
-  "sha256": "fd009fa85504c13cf493ec61b01db7370aa5ad768d0b5017f9ec66a9c8355f21",
+  "bytes": 14324777,
+  "sha256": "1d8e9d29f0bcd4e3c7d938e2d4fc26b011cd557ec023e649fe03726719c37195",
   "s3Key": "courses/2026-multicloud/aws/02/v1/aws-02.mp4",
   "captionKey": "courses/2026-multicloud/aws/02/v1/captions-ko.vtt",
   "status": "technically-verified; final listening pending",
   "serverUploaded": false,
   "decodeCheck": "passed",
   "audioReview": "pending",
-  "syncRevision": 2,
-  "syncCheck": "PCM/frame/encoded-speech/page-boundary passed"
+  "syncRevision": 3,
+  "syncCheck": "PCM/frame/encoded-speech/page-boundary passed",
+  "captionRevision": 1
 }

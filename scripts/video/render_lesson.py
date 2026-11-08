@@ -7,6 +7,7 @@ from pathlib import Path
 from PIL import Image,ImageDraw,ImageFont
 import edge_tts
 from visuals import draw_visual
+from captions import display_caption
 FPS=15
 RATE=24000
 SAMPLES_PER_FRAME=RATE//FPS
@@ -114,14 +115,14 @@ async def main():
    else:
     for k,bullet in enumerate(scene['bullets']):
      y=405+k*100;d.rounded_rectangle((100,y+8,112,y+48),radius=5,fill='#da9c3d');d.text((145,y),bullet,font=fonts[40],fill='#294b3b')
-   d.rounded_rectangle((70,835,1850,1015),radius=18,fill='#193c30');caption=wrap(d,b['text'],fonts[34],1670)
+   d.rounded_rectangle((70,835,1850,1015),radius=18,fill='#193c30');caption=wrap(d,display_caption(b['text']),fonts[34],1670)
    if len(caption)>3:raise ValueError('Caption overflow')
    for k,line in enumerate(caption):d.text((115,860+k*48),line,font=fonts[34],fill='white')
    d.text((100,1032),'광주대학교 멀티클라우드 운영 · 자체 제작 학습자료 / 검수용',font=fonts[22],fill='#6b7e70')
    frame=out/f'frame-{i:02}-{j:03}.png';image.save(frame)
    concat.append(f"file '{frame}'\noption framerate {FPS}\nduration {(end_frame-start_frame)/FPS:.12f}\n")
    cue_start=(global_frame+start_frame)/FPS;cue_end=(global_frame+end_frame)/FPS
-   cues.append((cue_start,cue_end,b['text']));timing['sentences'].append({'startFrame':global_frame+start_frame,'endFrame':global_frame+end_frame,'text':b['text'],'focus':scene['_focus']})
+   cues.append((cue_start,cue_end,display_caption(b['text'])));timing['sentences'].append({'startFrame':global_frame+start_frame,'endFrame':global_frame+end_frame,'text':display_caption(b['text']),'spokenText':b['text'],'focus':scene['_focus']})
   timeline.append(timing);global_frame+=scene_frames;print(f'SCENE {i+1}/{len(lesson["scenes"])} {source} voice={voice_length:.3f}s page={scene_frames/FPS:.3f}s',flush=True)
  concat.append(f"file '{frame}'\noption framerate {FPS}\n");(out/'frames.txt').write_text(''.join(concat))
  wav=out/'narration.wav'

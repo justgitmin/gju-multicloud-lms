@@ -2,14 +2,15 @@
   "id": "aws-04",
   "title": "EC2 생성과 웹 서버 실행",
   "durationSeconds": 323.2,
-  "bytes": 10290740,
-  "sha256": "2944d171ba55f47e9051f46e36b8a54dfb154a0c8800e4835ec5f73aace7c638",
+  "bytes": 10224424,
+  "sha256": "791fb1c3b42d640619d68b24564df26621c72676cba6e588fc25b5d15b6a448b",
   "s3Key": "courses/2026-multicloud/aws/04/v1/aws-04.mp4",
   "captionKey": "courses/2026-multicloud/aws/04/v1/captions-ko.vtt",
   "status": "technically-verified; final listening pending",
   "serverUploaded": false,
   "decodeCheck": "passed",
   "audioReview": "pending",
-  "syncRevision": 2,
-  "syncCheck": "PCM/frame/encoded-speech/page-boundary passed"
+  "syncRevision": 3,
+  "syncCheck": "PCM/frame/encoded-speech/page-boundary passed",
+  "captionRevision": 1
 }
