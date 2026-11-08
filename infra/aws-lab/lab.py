@@ -28,11 +28,15 @@ def load_config(path, deployment=False):
         raise ValueError('volume_gb: 8–30')
     if any(type(c[k]) is not bool for k in ['s3', 'rds']):
         raise ValueError('s3/rds must be true or false')
-    if not isinstance(c.get('ssh_cidrs'), dict) or set(c['ssh_cidrs']) != set(c['students']):
-        raise ValueError('ssh_cidrs must contain exactly one entry for each student')
-    if deployment:
-        for student in c['students']:
-            validate_ip_cidr(c['ssh_cidrs'][student])
+    c.setdefault('access_mode', 'ssm')
+    if c['access_mode'] not in ['ssm', 'ssh']:
+        raise ValueError('access_mode must be ssm or ssh')
+    if c['access_mode'] == 'ssh':
+        if not isinstance(c.get('ssh_cidrs'), dict) or set(c['ssh_cidrs']) != set(c['students']):
+            raise ValueError('ssh_cidrs must contain exactly one entry for each student')
+        if deployment:
+            for student in c['students']:
+                validate_ip_cidr(c['ssh_cidrs'][student])
     return c
 
 
@@ -104,8 +108,18 @@ def network_template(c):
     old = legacy_template(c, 'shared')
     resources = {key: old['Resources'][key] for key in NETWORK_RESOURCES}
     # A dedicated main route table with no internet route protects both shared private DB subnets.
-    return {'AWSTemplateFormatVersion': '2010-09-09', 'Description': 'GJU shared lab network', 'Resources': resources,
-            'Outputs': {param: {'Value': {'Ref': logical}} for logical, param in SHARED_REFS.items()}}
+    result = {'AWSTemplateFormatVersion': '2010-09-09', 'Description': 'GJU shared lab network', 'Resources': resources,
+              'Outputs': {param: {'Value': {'Ref': logical}} for logical, param in SHARED_REFS.items()}}
+    if c.get('access_mode', 'ssm') == 'ssm':
+        resources['SessionDocument'] = {'Type':'AWS::SSM::Document','Properties':{
+            'Name':c['lab_id']+'-shell','DocumentType':'Session','DocumentFormat':'JSON',
+            'Content':{'schemaVersion':'1.0','description':'Training browser shell','sessionType':'Standard_Stream',
+                'inputs':{'s3EncryptionEnabled':True,'cloudWatchEncryptionEnabled':True,'cloudWatchStreamingEnabled':False,
+                          'runAsEnabled':True,'runAsDefaultUser':'ubuntu','idleSessionTimeout':'20','maxSessionDuration':'180',
+                          'shellProfile':{'linux':'cd /home/ubuntu; exec /bin/bash -l','windows':''}}}}}
+        result['Outputs']['SharedSessionDocument']={'Value':{'Ref':'SessionDocument'}}
+    return result
+
 
 
 def template(c, student):
@@ -127,7 +141,41 @@ def template(c, student):
             continue
         t['Parameters'][key] = {'Type': 'String'}
     t['Outputs']['WebSecurityGroupId'] = {'Value': {'Ref': 'WebSecurity'}}
+    if c.get('access_mode', 'ssm') == 'ssm':
+        enable_ssm(t, c)
     return t
+
+
+def enable_ssm(t, c):
+    r=t['Resources']; web=r['Web']['Properties']
+    del r['Key']; web.pop('KeyName',None)
+    for key in ['SshCidr','PublicKey']:t['Parameters'].pop(key,None)
+    r['WebSecurity']['Properties']['GroupDescription']='Public training HTTP; no inbound SSH'
+    r['WebSecurity']['Properties']['SecurityGroupIngress']=[rule for rule in r['WebSecurity']['Properties']['SecurityGroupIngress'] if rule['FromPort']!=22]
+    t['Parameters']['SharedSessionDocument']={'Type':'String'}
+    # Deliberately no GetParameter/GetParameters or S3 rights on the instance role.
+    # Students with sudo can obtain this role's temporary credentials, so keep it channel-only.
+    r['NodeRole']={'Type':'AWS::IAM::Role','Properties':{
+        'AssumeRolePolicyDocument':{'Version':'2012-10-17','Statement':[{'Effect':'Allow','Principal':{'Service':'ec2.amazonaws.com'},'Action':'sts:AssumeRole'}]},
+        'Policies':[{'PolicyName':'SessionAgentOnly','PolicyDocument':{'Version':'2012-10-17','Statement':[{
+            'Effect':'Allow','Action':['ssm:UpdateInstanceInformation','ssmmessages:CreateControlChannel','ssmmessages:CreateDataChannel','ssmmessages:OpenControlChannel','ssmmessages:OpenDataChannel'],'Resource':'*'}]}}]}}
+    r['NodeProfile']={'Type':'AWS::IAM::InstanceProfile','Properties':{'Roles':[{'Ref':'NodeRole'}]}}
+    web['IamInstanceProfile']={'Ref':'NodeProfile'}
+    web['UserData']={'Fn::Base64':'#!/bin/bash\nset -eu\nif snap list amazon-ssm-agent >/dev/null 2>&1; then\n  snap start --enable amazon-ssm-agent\nelse\n  systemctl enable --now amazon-ssm-agent\nfi\n'}
+    own_instance={'Fn::Sub':'arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Web}'}
+    shell={'Fn::Sub':'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/${SharedSessionDocument}'}
+    own_sessions={'Fn::Sub':'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:session/${!aws:username}-*'}
+    doc=r['Boundary']['Properties']['PolicyDocument']
+    doc['Statement'] += [
+        {'Effect':'Allow','Action':'ssm:StartSession','Resource':own_instance,'Condition':{'BoolIfExists':{'ssm:SessionDocumentAccessCheck':'true'}}},
+        {'Effect':'Allow','Action':['ssm:StartSession','ssm:GetDocument','ssm:DescribeDocument'],'Resource':shell},
+        {'Effect':'Allow','Action':['ssm:ResumeSession','ssm:TerminateSession','ssmmessages:OpenDataChannel'],'Resource':[own_sessions,{'Fn::Sub':'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:session/${!aws:userid}-*'}]},
+        {'Effect':'Allow','Action':['ssm:DescribeSessions','ssm:GetConnectionStatus','ssm:DescribeInstanceInformation','ssm:DescribeInstanceProperties','ssm:ListDocuments'],'Resource':'*','Condition':{'StringEquals':{'aws:RequestedRegion':c['region']}}}]
+    # Both reference the same object in memory; explicitly set for clarity after JSON serialization.
+    r['Student']['Properties']['Policies'][0]['PolicyDocument']=doc
+    t['Outputs']['SessionDocument']={'Value':{'Ref':'SharedSessionDocument'}}
+    t['Outputs']['SessionConsoleUrl']={'Value':{'Fn::Sub':'https://${AWS::Region}.console.aws.amazon.com/systems-manager/session-manager/start-session?region=${AWS::Region}&target=${Web}&documentName=${SharedSessionDocument}'}}
+    t['Description']+=' (Session Manager, no SSH key)'
 
 
 def find_network(c):
@@ -146,6 +194,8 @@ def find_network(c):
 
 def ensure_network(c, state):
     existing = find_network(c)
+    if existing is not None and c.get('access_mode','ssm') == 'ssm' and not any(o['OutputKey']=='SharedSessionDocument' for o in existing.get('Outputs',[])):
+        raise ValueError('Existing network is an older SSH lab. Use a new lab_id; in-place conversion is not supported.')
     if existing is None:
         path = state / (c['lab_id'] + '-shared-template.json')
         path.write_text(json.dumps(network_template(c)))
@@ -177,7 +227,7 @@ def set_ssh(c, student, ip):
 
 
 def aws(c, *args):
-    result = subprocess.run(['aws', '--region', c['region'], '--output', 'json', '--no-cli-pager', *args], capture_output=True, text=True)
+    result = subprocess.run(['aws', '--region', c['region'], '--output', 'json', '--no-cli-pager', *args], capture_output=True, text=True, encoding='utf-8', errors='replace')
     if result.returncode:
         raise RuntimeError(result.stderr.strip())
     return json.loads(result.stdout) if result.stdout.strip() else {}
@@ -223,14 +273,18 @@ def deploy(c, state):
         folder = state / name
         # Existing state is never silently overwritten. status then use a new config containing remaining IDs.
         folder.mkdir(mode=0o700)
-        subprocess.run(['ssh-keygen', '-q', '-t', 'rsa', '-b', '3072', '-N', '', '-f', str(folder / 'ssh-key')], check=True)
+        if c.get('access_mode','ssm') == 'ssh':
+            subprocess.run(['ssh-keygen', '-q', '-t', 'rsa', '-b', '3072', '-N', '', '-f', str(folder / 'ssh-key')], check=True)
         password = 'Gju9!' + ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(23))
         dbpass = 'Gju9' + ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(24))
         save_private(folder / 'credentials.json', {'account_id': identity['Account'], 'username': name, 'initial_password': password, 'db_user': 'labadmin', 'db_password': dbpass if c['rds'] else None})
         template_path = folder / 'template.json'
         student_template = template(c, student)
         template_path.write_text(json.dumps(student_template))
-        params = [{'ParameterKey': k, 'ParameterValue': v} for k, v in {'SshCidr': c['ssh_cidrs'][student], 'PublicKey': (folder / 'ssh-key.pub').read_text().strip(), 'LoginPassword': password, 'DbPassword': dbpass}.items()]
+        values={'LoginPassword':password,'DbPassword':dbpass}
+        if c.get('access_mode','ssm') == 'ssh':
+            values.update(SshCidr=c['ssh_cidrs'][student],PublicKey=(folder/'ssh-key.pub').read_text().strip())
+        params=[{'ParameterKey':k,'ParameterValue':v} for k,v in values.items() if k in student_template['Parameters']]
         params += [{'ParameterKey': k, 'ParameterValue': v} for k, v in network.items() if k in student_template['Parameters']]
         if not c['rds']:
             params = [p for p in params if p['ParameterKey'] != 'DbPassword']
@@ -242,7 +296,7 @@ def deploy(c, state):
             aws(c, 'cloudformation', 'wait', 'stack-create-complete', '--stack-name', name)
             outputs = owned_stack(c, student).get('Outputs', [])
             save_private(folder / 'outputs.json', {o['OutputKey']: o['OutputValue'] for o in outputs})
-            print(name, 'ready; distribute ONLY this student directory securely')
+            print(name, 'ready; distribute ONLY this student directory securely', flush=True)
         finally:
             (folder / 'parameters.json').unlink(missing_ok=True)
 
@@ -299,7 +353,7 @@ def main():
     args = parser.parse_args()
     c = load_config(args.config, args.action == 'apply')
     if args.action == 'plan':
-        print(json.dumps({'lab': c['lab_id'], 'region': c['region'], 'students': len(c['students']), 'stacks': [c['lab_id'] + '-' + s for s in c['students']], 'resources_per_student': {'iam_user': 1, 'vpc': 0, 'ec2': 1, 's3': int(c['s3']), 'rds': int(c['rds'])}, 'shared_network': {'vpc': 1, 'public_subnets': 1, 'private_subnets': 2}, 'ssh_sources': c['ssh_cidrs'], 'note': 'No AWS calls. Costs and service quotas must be checked before apply.'}, indent=2))
+        print(json.dumps({'lab': c['lab_id'], 'region': c['region'], 'students': len(c['students']), 'stacks': [c['lab_id'] + '-' + s for s in c['students']], 'resources_per_student': {'iam_user': 1, 'vpc': 0, 'ec2': 1, 's3': int(c['s3']), 'rds': int(c['rds'])}, 'shared_network': {'vpc': 1, 'public_subnets': 1, 'private_subnets': 2}, 'access_mode': c['access_mode'], 'ssh_sources': c.get('ssh_cidrs',{}) if c['access_mode']=='ssh' else 'not required', 'note': 'No AWS calls. Costs and service quotas must be checked before apply.'}, indent=2))
         return
     if args.action in ['apply', 'destroy', 'set-ssh']:
         actual = aws(c, 'sts', 'get-caller-identity')['Account']
