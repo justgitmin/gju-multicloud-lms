@@ -73,3 +73,34 @@ class ManagerTests(unittest.TestCase):
         finally:server.shutdown();server.server_close();thread.join()
 
 if __name__=='__main__':unittest.main()
+
+class LmsSyncTests(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.m=manager.Manager(self.temp.name)
+        self.c=json.loads((Path(__file__).with_name('config.example.json')).read_text());self.c['students']=['s01'];self.c['student_emails']={'s01':'student@example.invalid'};self.m.save(self.c)
+        self.folder=self.m.state/(self.c['lab_id']+'-s01');self.folder.mkdir()
+        (self.folder/'credentials.json').write_text(json.dumps({'account_id':'123456789012','username':self.c['lab_id']+'-s01','initial_password':'fake-initial-password','db_password':'fake-db-password','AWS_SECRET_ACCESS_KEY':'must-not-send'}))
+        (self.folder/'outputs.json').write_text(json.dumps({'Username':self.c['lab_id']+'-s01','InstanceId':'i-0123456789abcdef0','SessionDocument':self.c['lab_id']+'-shell'}))
+    def tearDown(self):self.temp.cleanup()
+    def test_batch_maps_explicit_email_without_aws_admin_key(self):
+        b=self.m.batch(self.c['lab_id'],['s01'],'course-test');e=b['entries'][0]
+        self.assertEqual(e['email'],'student@example.invalid');self.assertNotIn('AWS_SECRET_ACCESS_KEY',e)
+        self.assertEqual(e['studentCode'],'s01')
+    def test_http_url_is_rejected_before_network(self):
+        with patch.object(manager,'build_opener') as mocked:
+            with self.assertRaises(ValueError):self.m.sync(self.c['lab_id'],['s01'],'course-test','http://lms.example.com','a'*64)
+            mocked.assert_not_called()
+    def test_sync_uses_post_tls_and_no_redirect_handler(self):
+        from unittest.mock import MagicMock
+        response=MagicMock();response.__enter__.return_value.read.return_value=b'{"count":1,"students":[]}'
+        opener=MagicMock();opener.open.return_value=response
+        with patch.object(manager,'build_opener',return_value=opener) as mocked:
+            result=self.m.sync(self.c['lab_id'],['s01'],'course-test','https://lms.example.com','a'*64)
+            req=opener.open.call_args.args[0]
+            self.assertEqual(req.full_url,'https://lms.example.com/api/admin/lab-import');self.assertEqual(req.method,'POST')
+            self.assertEqual(req.headers['Authorization'],'Bearer '+'a'*64)
+            self.assertIsNone(mocked.call_args.args[0].redirect_request(None,None,None,None,None,None))
+            self.assertEqual(result['count'],1)
+    def test_missing_mapping_refuses_export(self):
+        self.c['student_emails']={};self.m.save(self.c)
+        with self.assertRaises(ValueError):self.m.batch(self.c['lab_id'],['s01'],'course-test')
