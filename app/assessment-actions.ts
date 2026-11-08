@@ -3,7 +3,8 @@ import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
 import {db} from '../lib/db';
 import {requireAdmin,requireUser,allowAttempt} from '../lib/auth';
-import {grade,safeUrl} from '../lib/assessment.mjs';
+import {results} from '../lib/results';
+import {grade,safeUrl,canTakeQuiz} from '../lib/assessment.mjs';
 const text=(form:FormData,key:string)=>typeof form.get(key)==='string'?String(form.get(key)):'';
 function fail(courseId:string,message:string):never{redirect(`/course/${encodeURIComponent(courseId)}?error=${encodeURIComponent(message)}`);}
 async function approvedEnrollment(courseId:string){const user=await requireUser();const enrollment=await db.enrollment.findUnique({where:{userId_courseId:{userId:user.id,courseId}},include:{course:{select:{published:true}}}});if(!enrollment||enrollment.status!=='APPROVED'||!enrollment.course.published)redirect('/classroom');return enrollment;}
@@ -17,6 +18,7 @@ export async function submitLab(form:FormData){
 }
 export async function submitQuiz(form:FormData){
  const quiz=await db.quiz.findUnique({where:{id:text(form,'quizId')}});if(!quiz)redirect('/classroom');const enrollment=await approvedEnrollment(quiz.courseId);
+ if(!canTakeQuiz(await results(enrollment.id)))fail(quiz.courseId,'모든 영상을 각각 95% 이상 시청한 후 평가에 응시할 수 있습니다.');
  if(!await allowAttempt('quiz',`${enrollment.id}:${quiz.id}`,5))fail(quiz.courseId,'15분 동안 5회까지 응시할 수 있습니다. 잠시 후 다시 시도하세요.');
  const questions=quiz.questions as {prompt:string,options:string[]}[];
  const values=questions.map((_,i)=>text(form,`answer-${i}`));
