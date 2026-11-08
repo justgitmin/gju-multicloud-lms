@@ -28,14 +28,15 @@ def load_config(path, deployment=False):
         raise ValueError('volume_gb: 8–30')
     if any(type(c[k]) is not bool for k in ['s3', 'rds']):
         raise ValueError('s3/rds must be true or false')
+    if not isinstance(c.get('ssh_cidrs'), dict) or set(c['ssh_cidrs']) != set(c['students']):
+        raise ValueError('ssh_cidrs must contain exactly one entry for each student')
     if deployment:
-        net = ipaddress.ip_network(c['ssh_cidr'], strict=True)
-        if net.version != 4 or net.prefixlen < 24 or net.network_address.is_unspecified:
-            raise ValueError('Use a specific public training IPv4 CIDR, /24 or narrower; never 0.0.0.0/0')
+        for student in c['students']:
+            validate_ip_cidr(c['ssh_cidrs'][student])
     return c
 
 
-def template(c, student):
+def legacy_template(c, student):
     name = c['lab_id'] + '-' + student
     tags = [{'Key': 'LabId', 'Value': c['lab_id']}, {'Key': 'StudentId', 'Value': student}, {'Key': 'Name', 'Value': name}]
     def ref(x): return {'Ref': x}
@@ -88,6 +89,93 @@ def template(c, student):
     return result
 
 
+NETWORK_RESOURCES = ['Vpc', 'Gateway', 'Attachment', 'PublicSubnet', 'PrivateA', 'PrivateB', 'PublicRoutes', 'PublicRoute', 'RouteAssociation']
+SHARED_REFS = {'Vpc': 'SharedVpc', 'PublicSubnet': 'SharedPublicSubnet', 'PrivateA': 'SharedPrivateA', 'PrivateB': 'SharedPrivateB'}
+
+
+def validate_ip_cidr(value):
+    net = ipaddress.ip_network(value, strict=True)
+    if net.version != 4 or net.prefixlen != 32 or not net.network_address.is_global:
+        raise ValueError('Each SSH source must be a public IPv4 /32, not a whole network')
+    return str(net)
+
+
+def network_template(c):
+    old = legacy_template(c, 'shared')
+    resources = {key: old['Resources'][key] for key in NETWORK_RESOURCES}
+    # A dedicated main route table with no internet route protects both shared private DB subnets.
+    return {'AWSTemplateFormatVersion': '2010-09-09', 'Description': 'GJU shared lab network', 'Resources': resources,
+            'Outputs': {param: {'Value': {'Ref': logical}} for logical, param in SHARED_REFS.items()}}
+
+
+def template(c, student):
+    t = legacy_template(c, student)
+    for key in NETWORK_RESOURCES:
+        del t['Resources'][key]
+    del t['Resources']['Web']['DependsOn']
+    def rewrite(value):
+        if isinstance(value, dict):
+            if set(value) == {'Ref'} and value['Ref'] in SHARED_REFS:
+                return {'Ref': SHARED_REFS[value['Ref']]}
+            return {key: rewrite(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [rewrite(item) for item in value]
+        return value
+    t = rewrite(t)
+    for key in SHARED_REFS.values():
+        if not c['rds'] and key in ['SharedPrivateA', 'SharedPrivateB']:
+            continue
+        t['Parameters'][key] = {'Type': 'String'}
+    t['Outputs']['WebSecurityGroupId'] = {'Value': {'Ref': 'WebSecurity'}}
+    return t
+
+
+def find_network(c):
+    # Enumerating existing stacks avoids treating authorization or network errors as missing stacks.
+    stacks = aws(c, 'cloudformation', 'describe-stacks').get('Stacks', [])
+    match = next((x for x in stacks if x['StackName'] == c['lab_id'] + '-shared'), None)
+    if match is None:
+        return None
+    tags = {x['Key']: x['Value'] for x in match.get('Tags', [])}
+    if tags.get('LabId') != c['lab_id'] or tags.get('StudentId') != 'shared' or tags.get('ManagedBy') != 'gju-lab-tool':
+        raise ValueError('Shared stack ownership mismatch')
+    if match['StackStatus'] not in ['CREATE_COMPLETE', 'UPDATE_COMPLETE']:
+        raise ValueError('Shared stack is not ready: ' + match['StackStatus'])
+    return match
+
+
+def ensure_network(c, state):
+    existing = find_network(c)
+    if existing is None:
+        path = state / (c['lab_id'] + '-shared-template.json')
+        path.write_text(json.dumps(network_template(c)))
+        name = c['lab_id'] + '-shared'
+        aws(c, 'cloudformation', 'validate-template', '--template-body', 'file://' + str(path))
+        aws(c, 'cloudformation', 'create-stack', '--stack-name', name, '--template-body', 'file://' + str(path), '--tags', 'Key=LabId,Value=' + c['lab_id'], 'Key=StudentId,Value=shared', 'Key=ManagedBy,Value=gju-lab-tool')
+        print(name, 'shared network creation requested', flush=True)
+        aws(c, 'cloudformation', 'wait', 'stack-create-complete', '--stack-name', name)
+        existing = find_network(c)
+    return {x['OutputKey']: x['OutputValue'] for x in existing['Outputs']}
+
+
+def set_ssh(c, student, ip):
+    if student not in c['students']:
+        raise ValueError('Unknown student')
+    cidr = validate_ip_cidr(ip if '/' in ip else ip + '/32')
+    stack = owned_stack(c, student)
+    outputs = {x['OutputKey']: x['OutputValue'] for x in stack.get('Outputs', [])}
+    group = outputs.get('WebSecurityGroupId')
+    if not group:
+        raise ValueError('Not a shared-network v2 student stack')
+    data = aws(c, 'ec2', 'describe-security-group-rules', '--filters', 'Name=group-id,Values=' + group)
+    rules = [r for r in data['SecurityGroupRules'] if not r['IsEgress'] and r['IpProtocol'] == 'tcp' and r.get('FromPort') == 22 and r.get('ToPort') == 22]
+    if len(rules) != 1 or 'CidrIpv4' not in rules[0]:
+        raise ValueError('Unexpected SSH rules; refusing to change group')
+    change = [{'SecurityGroupRuleId': rules[0]['SecurityGroupRuleId'], 'SecurityGroupRule': {'IpProtocol': 'tcp', 'FromPort': 22, 'ToPort': 22, 'CidrIpv4': cidr, 'Description': 'Assigned student home IPv4'}}]
+    aws(c, 'ec2', 'modify-security-group-rules', '--group-id', group, '--security-group-rules', json.dumps(change))
+    print(student, 'SSH source updated to', cidr, '(also update ssh_cidrs in your local config)')
+
+
 def aws(c, *args):
     result = subprocess.run(['aws', '--region', c['region'], '--output', 'json', '--no-cli-pager', *args], capture_output=True, text=True)
     if result.returncode:
@@ -113,7 +201,7 @@ def owned_stack(c, student):
 def preflight(c):
     # Read-only quota checks before creating any student environment.
     quotas = aws(c, 'service-quotas', 'list-service-quotas', '--service-code', 'vpc')['Quotas']
-    count = len(c['students'])
+    count = 0 if find_network(c) else 1
     checks = [('VPCs per Region', 'describe-vpcs', 'Vpcs'), ('Internet gateways per Region', 'describe-internet-gateways', 'InternetGateways')]
     for label, action, key in checks:
         quota = next((q['Value'] for q in quotas if q['QuotaName'].lower() == label.lower()), None)
@@ -127,6 +215,7 @@ def preflight(c):
 
 def deploy(c, state):
     preflight(c)
+    network = ensure_network(c, state)
     identity = aws(c, 'sts', 'get-caller-identity')
     print('Target AWS account:', identity['Account'], 'region:', c['region'])
     for student in c['students']:
@@ -139,8 +228,10 @@ def deploy(c, state):
         dbpass = 'Gju9' + ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(24))
         save_private(folder / 'credentials.json', {'account_id': identity['Account'], 'username': name, 'initial_password': password, 'db_user': 'labadmin', 'db_password': dbpass if c['rds'] else None})
         template_path = folder / 'template.json'
-        template_path.write_text(json.dumps(template(c, student)))
-        params = [{'ParameterKey': k, 'ParameterValue': v} for k, v in {'SshCidr': c['ssh_cidr'], 'PublicKey': (folder / 'ssh-key.pub').read_text().strip(), 'LoginPassword': password, 'DbPassword': dbpass}.items()]
+        student_template = template(c, student)
+        template_path.write_text(json.dumps(student_template))
+        params = [{'ParameterKey': k, 'ParameterValue': v} for k, v in {'SshCidr': c['ssh_cidrs'][student], 'PublicKey': (folder / 'ssh-key.pub').read_text().strip(), 'LoginPassword': password, 'DbPassword': dbpass}.items()]
+        params += [{'ParameterKey': k, 'ParameterValue': v} for k, v in network.items() if k in student_template['Parameters']]
         if not c['rds']:
             params = [p for p in params if p['ParameterKey'] != 'DbPassword']
         save_private(folder / 'parameters.json', params)
@@ -180,19 +271,37 @@ def destroy(c):
         aws(c, 'cloudformation', 'wait', 'stack-delete-complete', '--stack-name', name)
         print(name, 'stack deleted (local credentials retained for operator disposal)')
 
+    cleanup_network(c)
+
+
+def cleanup_network(c):
+    network = find_network(c)
+    if network:
+        stacks = aws(c, 'cloudformation', 'describe-stacks').get('Stacks', [])
+        remaining = [x['StackName'] for x in stacks if x['StackName'] != c['lab_id'] + '-shared' and
+                     {t['Key']: t['Value'] for t in x.get('Tags', [])}.get('LabId') == c['lab_id']]
+        if remaining:
+            print('Shared network retained; remaining lab stacks:', ', '.join(remaining))
+        else:
+            aws(c, 'cloudformation', 'delete-stack', '--stack-name', c['lab_id'] + '-shared')
+            aws(c, 'cloudformation', 'wait', 'stack-delete-complete', '--stack-name', c['lab_id'] + '-shared')
+            print('Shared network deleted')
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['plan', 'apply', 'status', 'destroy'])
+    parser.add_argument('action', choices=['plan', 'apply', 'status', 'destroy', 'set-ssh'])
     parser.add_argument('--config', required=True)
+    parser.add_argument('--student')
+    parser.add_argument('--ip', help='New home public IPv4, optionally with /32')
     parser.add_argument('--state', default='.lab-state')
-    parser.add_argument('--confirm-account', help='Required for apply/destroy; must match STS account ID')
+    parser.add_argument('--confirm-account', help='Required for apply/destroy/set-ssh; must match STS account ID')
     args = parser.parse_args()
     c = load_config(args.config, args.action == 'apply')
     if args.action == 'plan':
-        print(json.dumps({'lab': c['lab_id'], 'region': c['region'], 'students': len(c['students']), 'stacks': [c['lab_id'] + '-' + s for s in c['students']], 'resources_per_student': {'iam_user': 1, 'vpc': 1, 'ec2': 1, 's3': int(c['s3']), 'rds': int(c['rds'])}, 'ssh_source': c['ssh_cidr'], 'note': 'No AWS calls. Costs and service quotas must be checked before apply.'}, indent=2))
+        print(json.dumps({'lab': c['lab_id'], 'region': c['region'], 'students': len(c['students']), 'stacks': [c['lab_id'] + '-' + s for s in c['students']], 'resources_per_student': {'iam_user': 1, 'vpc': 0, 'ec2': 1, 's3': int(c['s3']), 'rds': int(c['rds'])}, 'shared_network': {'vpc': 1, 'public_subnets': 1, 'private_subnets': 2}, 'ssh_sources': c['ssh_cidrs'], 'note': 'No AWS calls. Costs and service quotas must be checked before apply.'}, indent=2))
         return
-    if args.action in ['apply', 'destroy']:
+    if args.action in ['apply', 'destroy', 'set-ssh']:
         actual = aws(c, 'sts', 'get-caller-identity')['Account']
         if args.confirm_account != actual:
             raise ValueError('Pass --confirm-account with the intended AWS account ID; no changes made')
@@ -201,6 +310,10 @@ def main():
         state.mkdir(mode=0o700, parents=True, exist_ok=True)
         os.chmod(state, 0o700)
         deploy(c, state)
+    elif args.action == 'set-ssh':
+        if not args.student or not args.ip:
+            raise ValueError('set-ssh requires --student and --ip')
+        set_ssh(c, args.student, args.ip)
     elif args.action == 'destroy':
         destroy(c)
     else:
