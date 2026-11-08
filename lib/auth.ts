@@ -19,7 +19,7 @@ export async function createSession(userId:string){
  const token=randomBytes(32).toString('hex');
  const expiresAt=new Date(Date.now()+7*24*60*60*1000);
  await db.session.create({data:{userId,tokenHash:digest(token),expiresAt}});
- jar.set(cookieName,token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',expires:expiresAt});
+ jar.set(cookieName,token,{httpOnly:true,secure:(process.env.APP_ORIGIN??'').startsWith('https://'),sameSite:'lax',path:'/',expires:expiresAt});
 }
 export async function destroySession(){const jar=await cookies();const token=jar.get(cookieName)?.value;if(token)await db.session.deleteMany({where:{tokenHash:digest(token)}});jar.delete(cookieName);}
 // Shared DB counters prevent per-process limit bypass. Deliberately avoid trusting proxy IP headers.
