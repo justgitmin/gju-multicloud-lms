@@ -48,8 +48,23 @@ class Api:
                 raise LabError('API response too large')
             return json.loads(raw) if raw else {}
         except urllib.error.HTTPError as error:
-            # Never print request headers, credential-bearing bodies or raw error responses.
-            raise LabError('API HTTP ' + str(error.code) + '; check credentials, permissions and organization IP ACL') from None
+            # Only emit endpoint path and allowlisted machine codes; never raw bodies/messages.
+            location = urllib.parse.urlsplit(url).path
+            codes = []
+            try:
+                data = json.loads(error.read(65536))
+                if isinstance(data, dict):
+                    oauth = data.get('error')
+                    if isinstance(oauth, str) and oauth in {'invalid_request', 'invalid_client', 'invalid_grant', 'unauthorized_client', 'unsupported_grant_type', 'invalid_scope', 'access_denied', 'server_error', 'temporarily_unavailable'}:
+                        codes.append('oauth=' + oauth)
+                    header = data.get('header')
+                    code = header.get('resultCode') if isinstance(header, dict) else None
+                    if type(code) is int:
+                        codes.append('resultCode=' + str(code))
+            except (ValueError, OSError, UnicodeError):
+                pass
+            suffix = ('; ' + ', '.join(codes)) if codes else '; no safe error code provided'
+            raise LabError(method + ' ' + location + ': HTTP ' + str(error.code) + suffix) from None
         except (urllib.error.URLError, TimeoutError, OSError):
             raise LabError('API network/TLS error; no automatic write retry') from None
         except (ValueError, UnicodeError):
@@ -62,6 +77,7 @@ class Api:
         if not isinstance(data.get('access_token'), str) or data.get('token_type', '').lower() != 'bearer':
             raise LabError('Authentication did not return a Bearer token')
         self.token = data['access_token']
+        print('AUTH_OK: token issued (token value hidden)', flush=True)
 
     def close(self):
         if self.token:
@@ -100,7 +116,7 @@ def ident(value):
 def paged(api, path, key, query=None):
     items, seen = [], set()
     for page in range(1, 101):
-        response = api.call('GET', path, query={**(query or {}), 'limit': 100, 'page': page})
+        response = api.call('GET', path, query={**(query or {}), 'limit': 20, 'page': page})
         batch = response.get(key)
         total = response.get('totalCount', response.get('paging', {}).get('totalCount'))
         if not isinstance(batch, list) or type(total) is not int or total < 0:
@@ -173,7 +189,7 @@ def operator(api, project, email):
     found, seen = [], set()
     for page in range(1, 101):
         response = api.call('POST', '/v1/projects/' + ident(project) + '/members/search',
-                            {'paging': {'limit': 100, 'page': page}})
+                            {'paging': {'limit': 20, 'page': page}})
         batch = response.get('projectMembers')
         total = response.get('paging', {}).get('totalCount')
         if not isinstance(batch, list) or type(total) is not int:
