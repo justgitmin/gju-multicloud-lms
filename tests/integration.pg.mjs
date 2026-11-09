@@ -27,12 +27,18 @@ try{
  const base='http://127.0.0.1:3300';let ready=false;
  for(let i=0;i<100;i++){try{if((await fetch(base+'/api/health')).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,200));}check(ready,'HTTP app starts');
  async function action(path,values,cookie=''){const page=await fetch(base+path,{headers:cookie?{cookie}:{},redirect:'manual'});const html=await page.text();const forms=html.match(/<form[\s\S]*?<\/form>/g)??[];const selected=forms.find(f=>Object.keys(values).every(k=>f.includes('name="'+k+'"'))&&['courseId','enrollmentId','labId','quizId'].every(k=>!(k in values)||f.includes('value="'+values[k]+'"')));const match=(selected??'').match(/name="(\$ACTION_ID_[^"]+)"/);if(!match)throw new Error('Missing action '+path);const form=new FormData();form.set(match[1],'');for(const [k,v]of Object.entries(values))form.set(k,v);return fetch(base+path,{method:'POST',headers:{origin:base,...(cookie?{cookie}:{})},body:form,redirect:'manual'});}
- let response=await fetch(base+'/classroom',{redirect:'manual'});check(response.status===307,'Anonymous classroom access redirects');
+ let response=await fetch(base+'/');let home=await response.text();check(home.includes('로그인 →')&&!home.includes('로그아웃'),'Guest home shows login');
+ response=await fetch(base+'/classroom',{redirect:'manual'});check(response.status===307,'Anonymous classroom access redirects');
  response=await action('/register',{name:'테스트 학생',studentNumber:'TEST-001',email:'student@example.invalid',password:studentPassword,consent:'on'});const studentCookie=response.headers.get('set-cookie')?.split(';')[0];check(!!studentCookie&&response.status===303,'Registration creates authenticated session');
+ response=await fetch(base+'/',{headers:{cookie:studentCookie}});home=await response.text();check(home.includes('로그아웃')&&home.includes('테스트 학생')&&!home.includes('로그인 →'),'Authenticated home shows name and logout');
+ check(/private|no-store/.test(response.headers.get('cache-control')??''),'Personalized home is not publicly cached');
+ response=await fetch(base+'/login',{headers:{cookie:studentCookie},redirect:'manual'});check(response.status===307&&response.headers.get('location')==='/classroom','Authenticated student skips login form');
+ response=await fetch(base+'/');check(!(await response.text()).includes('테스트 학생'),'Guest home does not leak another user identity');
  response=await fetch(base+'/admin',{headers:{cookie:studentCookie},redirect:'manual'});check(response.status===307,'Student cannot access admin page');
  response=await action('/classroom',{courseId:'gju-multicloud-2026'},studentCookie);let application=await prisma.enrollment.findFirstOrThrow({where:{user:{email:'student@example.invalid'}}});check(application.status==='PENDING','Enrollment starts pending');
  response=await fetch(base+'/learn/nhn-01',{headers:{cookie:studentCookie},redirect:'manual'});check(response.status===307,'Pending student cannot access lesson');
  response=await action('/login',{email:'admin@example.invalid',password:adminPassword});const adminCookie=response.headers.get('set-cookie')?.split(';')[0];check(!!adminCookie,'Admin login succeeds');
+ response=await fetch(base+'/login',{headers:{cookie:adminCookie},redirect:'manual'});check(response.status===307&&response.headers.get('location')==='/admin','Authenticated admin skips login form');
  response=await action('/admin',{enrollmentId:application.id,status:'APPROVED'},adminCookie);application=await prisma.enrollment.findUniqueOrThrow({where:{id:application.id}});check(application.status==='APPROVED','Admin approves enrollment');
  response=await fetch(base+'/course/gju-multicloud-2026',{headers:{cookie:studentCookie}});let html=await response.text();check(response.ok&&html.includes('실습 제출')&&html.includes('/guide/nhn'),'Approved student sees NHN guide, labs and quizzes');
  response=await fetch(base+'/guide/nhn',{headers:{cookie:studentCookie}});check(response.ok&&(await response.text()).includes('MobaXterm'),'NHN SSH guide renders');
@@ -62,6 +68,9 @@ try{
  response=await fetch(base+'/api/admin/results',{headers:{cookie:studentCookie}});check(response.status===403,'Student cannot export report');
  response=await fetch(base+'/api/admin/results',{headers:{cookie:adminCookie}});check(response.ok&&(await response.text()).includes('테스트 학생'),'Admin CSV report contains enrollment');
  response=await fetch(base+'/api/lessons/nhn-01/playback',{method:'POST',headers:{cookie:studentCookie,origin:'https://other.invalid','Content-Type':'application/json'},body:JSON.stringify({action:'start'})});check(response.status===403,'Cross-origin playback mutation rejected');
+ response=await action('/',{},studentCookie);check(response.status===303,'Home logout submits session action');
+ response=await fetch(base+'/',{headers:{cookie:studentCookie}});home=await response.text();check(home.includes('로그인 →')&&!home.includes('로그아웃'),'Revoked session returns home to guest state');
+ response=await fetch(base+'/classroom',{headers:{cookie:studentCookie},redirect:'manual'});check(response.status===307,'Logged-out session cannot reopen classroom');
  const outcome={engine:'PostgreSQL',checks:report};await fs.mkdir(root+'/test-results',{recursive:true});await fs.writeFile(root+'/test-results/integration.json',JSON.stringify(outcome,null,2));
  console.log('INTEGRATION_OK '+report.length);
 }catch(error){console.error('INTEGRATION_FAILED',error.message);process.exitCode=1;}finally{app?.kill();await prisma.$disconnect();}

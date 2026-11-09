@@ -1,12 +1,14 @@
 import Link from 'next/link';
+import {currentUser} from '../lib/auth';
+import {logout} from './actions';
 import {modules} from '../lib/curriculum';
 import s from './home.module.css';
 
 const photos={classroom:'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=1600&q=85',aws:'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=640&q=80',nhn:'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=640&q=80'};
 const notices=[{title:'온라인 학습관 이용 안내',body:'내 강의실에서 승인된 과정에 입장하세요. 영상 학습 위치와 이수 기록을 저장하여 이어서 학습할 수 있습니다.'},{title:'수강신청 및 승인 절차 안내',body:'계정으로 로그인한 뒤 내 강의실에서 수강신청하세요. 운영자가 승인하면 영상 학습과 실습·평가를 이용할 수 있습니다. 계정 발급과 로그인 문제는 교육 운영자에게 문의해 주세요.'},{title:'실습 전 계정과 비용을 확인해 주세요',body:'실습에 사용할 클라우드 계정과 권한을 확인하세요. 실습 종료 후 인스턴스·DB·디스크·IP 등 과금 자원이 남아 있는지 점검해 주세요.'}];
-export default function Home(){return <div className={s.home}>
+export default async function Home(){const user=await currentUser({allowPasswordChange:true});return <div className={s.home}>
 <a className={s.skip} href="#content">본문 바로가기</a>
-<div className={s.utility}><div className={s.wrap}><span>광주대학교 인공지능 부트캠프</span><Link href="/login">로그인 →</Link></div></div>
+<div className={s.utility}><div className={s.wrap}><span>광주대학교 인공지능 부트캠프</span><div className={s.sessionControls}>{user?<><span className={s.sessionName}>{user.name}님</span><Link href={user.mustChangePassword?'/mypage/password':'/mypage'}>마이페이지</Link><form action={logout}><button type="submit">로그아웃</button></form></>:<Link href="/login">로그인 →</Link>}</div></div></div>
 <header className={s.header}><div className={s.wrap}><Link className={s.logo} href="/" aria-label="GJU Cloud Campus 홈">GJU <span>CLOUD CAMPUS</span></Link><nav aria-label="주 메뉴"><a href="#about">과정 소개</a><a href="#courses">교육과정</a><a href="#guide">학습 안내</a><a href="#notices">공지사항</a></nav><Link className={s.primary} href="/classroom">내 강의실 <span aria-hidden="true">↗</span></Link></div></header>
 <main className={s.main} id="content">
 <section id="about" className={s.hero}><div className={s.heroCopy}><div className={s.kicker}>2026 MULTI-CLOUD PROGRAM</div><h1>클라우드를 배우고,<br/>직접 운영하는 경험.</h1><p>NHN Cloud부터 AWS까지,<br/>영상과 실습으로 완성하는 멀티클라우드 교육</p><div className={s.actions}><a className={s.primary} href="#courses">교육과정 보기 <span aria-hidden="true">→</span></a><a className={s.textLink} href="#guide">학습 방법 안내</a></div></div><figure className={s.heroPhoto}><img src={photos.classroom} alt="교육장에서 함께 학습하는 수강생들의 모습 — 교육 환경 예시 이미지" fetchPriority="high"/><figcaption>배움에서 실무로, GJU CLOUD CAMPUS <small>교육 환경 예시 이미지</small></figcaption></figure></section>
