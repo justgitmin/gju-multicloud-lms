@@ -1,16 +1,16 @@
 {
   "id": "nhn-01",
   "title": "조직·프로젝트·권한 확인",
-  "durationSeconds": 314.8666666666667,
-  "bytes": 10541925,
-  "sha256": "0c27a4cf5119c6a6041c6d2ec251eb32f1fa8f44218086df426ff995c114ebd8",
-  "s3Key": "courses/2026-multicloud/nhn/01/v1/nhn-01.mp4",
-  "captionKey": "courses/2026-multicloud/nhn/01/v1/captions-ko.vtt",
-  "status": "technically-verified; final listening pending",
+  "durationSeconds": 318.73333333333335,
+  "bytes": 10393766,
+  "sha256": "139f3b82743a064ba29ef909a5461c436a53970a0e68ca0b47345b26fc49576f",
+  "s3Key": "courses/2026-multicloud/nhn/01/v2/nhn-01.mp4",
+  "captionKey": "courses/2026-multicloud/nhn/01/v2/captions-ko.vtt",
+  "status": "nhn-first-revised; technically-verified; final listening pending",
   "serverUploaded": false,
   "decodeCheck": "passed",
   "audioReview": "pending",
-  "syncRevision": 3,
+  "syncRevision": 4,
   "syncCheck": "PCM/frame/encoded-speech/page-boundary passed",
-  "captionRevision": 1
+  "captionRevision": 2
 }
