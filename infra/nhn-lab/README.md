@@ -65,3 +65,7 @@ python -m unittest discover -s infra/nhn-lab -p 'test_*.py' -v
 공식 근거:
 - https://docs.nhncloud.com/ko/nhncloud/ko/public-api/framework-api/
 - https://docs.nhncloud.com/ko/nhncloud/ko/public-api/user-access-key-token/
+
+## 인증 단계에서 invalid_request가 반복될 때
+
+`apply` 반복 대신 `py -3 infra/nhn-lab/roles.py auth-check`를 실행하세요. 이 모드는 프로젝트/멤버/역할 API를 호출하지 않고 토큰 발급/폐기만 검사합니다. 입력 길이와 숨은 문자 등 구조만 표시하며, API 오류 설명은 원문 대신 고정된 분류(server_hints)만 표시합니다. 키/비밀 키/토큰/Basic 인증 문자열은 출력하지 않습니다. 이 정보만으로 원인이 확정되지 않을 수 있습니다. 기존 계획 파일은 그대로 유지됩니다.
