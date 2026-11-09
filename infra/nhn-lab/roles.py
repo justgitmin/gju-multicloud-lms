@@ -32,6 +32,44 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+def oauth_hints(data):
+    # Classify server descriptions without exposing raw text (it may echo credentials).
+    description = data.get('error_description', '')
+    if not isinstance(description, str):
+        return []
+    patterns = {
+        'KEY_OR_CREDENTIALS': r'user.?access.?key|secret.?access.?key|credential|client.?auth',
+        'EXPIRED': r'expir|만료',
+        'DISABLED_OR_BLOCKED': r'disable|inactive|block|stopp|중지|차단',
+        'LIMIT': r'too many|limit|quota|rate|초과|제한',
+        'REQUEST_FORMAT': r'grant.?type|content.?type|parameter|malformed|파라미터',
+        'INVALID_OR_MISMATCH': r'invalid|incorrect|mismatch|wrong|일치',
+        'NOT_FOUND': r'not.?found|does.?not.?exist|존재하지',
+    }
+    return [name for name, pattern in patterns.items() if re.search(pattern, description[:8192], re.I)]
+
+
+def check_input(key, secret):
+    # Only structural diagnostics leave this function, never characters or substrings.
+    if not key or not secret:
+        raise LabError('INPUT_CHECK: empty credential')
+    if not all(33 <= ord(c) <= 126 for c in key + secret):
+        raise LabError('INPUT_CHECK: whitespace/control/non-ASCII characters detected; paste original key text only')
+    if key.startswith(('Basic ', 'Bearer ')) or secret.startswith(('Basic ', 'Bearer ')):
+        raise LabError('INPUT_CHECK: paste keys without authentication prefixes')
+    if any(x.startswith(('\"', "'")) or x.endswith(('\"', "'")) for x in (key, secret)):
+        raise LabError('INPUT_CHECK: remove surrounding quotation marks')
+    if '***' in key or '***' in secret:
+        raise LabError('INPUT_CHECK: masked display value detected; use original Secret Access Key')
+    if len(key) != 20:
+        raise LabError('INPUT_CHECK: User Access Key length is ' + str(len(key)) + '; expected 20 characters')
+    if key == secret:
+        raise LabError('INPUT_CHECK: identical key and secret; the two fields require different values')
+    if ':' in key:
+        raise LabError('INPUT_CHECK: invalid User Access Key separator')
+    print('INPUT_CHECK: user_key_chars=' + str(len(key)) + '; secret_chars=' + str(len(secret)) + '; visible_ASCII=yes', flush=True)
+
+
 class Api:
     def __init__(self, key, secret):
         basic = base64.b64encode((key + ':' + secret).encode()).decode()
@@ -57,6 +95,9 @@ class Api:
                     oauth = data.get('error')
                     if isinstance(oauth, str) and oauth in {'invalid_request', 'invalid_client', 'invalid_grant', 'unauthorized_client', 'unsupported_grant_type', 'invalid_scope', 'access_denied', 'server_error', 'temporarily_unavailable'}:
                         codes.append('oauth=' + oauth)
+                    hints = oauth_hints(data)
+                    if hints:
+                        codes.append('server_hints=' + ','.join(hints))
                     header = data.get('header')
                     code = header.get('resultCode') if isinstance(header, dict) else None
                     if type(code) is int:
@@ -384,12 +425,13 @@ def credentials():
             raise LabError('Hidden input unavailable; use Windows Terminal or PowerShell console') from None
     if not key or not secret or ':' in key or any(c in key + secret for c in '\r\n'):
         raise LabError('Empty or invalid key input')
+    check_input(key, secret)
     return Api(key, secret)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['plan', 'apply'])
+    parser.add_argument('action', choices=['plan', 'apply', 'auth-check'])
     parser.add_argument('--org-id', default=DEFAULT_ORG)
     parser.add_argument('--project-prefix', default='TBIT_Edu01_Pro')
     parser.add_argument('--student-prefix', default='educity')
@@ -412,8 +454,12 @@ def main():
         config = settings(args)
     api = credentials()
     try:
+        if args.action == 'auth-check':
+            print('AUTH_CHECK: Python ' + sys.version.split()[0] + '; system_proxy_configured=' + ('yes' if urllib.request.getproxies() else 'no'), flush=True)
         api.login()
-        if args.action == 'plan':
+        if args.action == 'auth-check':
+            print('AUTH_CHECK_OK: no project/member/role requests made')
+        elif args.action == 'plan':
             plan = build_plan(api, config)
             print_plan(plan)
             save_json(args.plan, plan)
