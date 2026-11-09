@@ -246,5 +246,36 @@ class EmptyRoleTests(unittest.TestCase):
         with self.assertRaises(r.LabError): r.build_plan(api, CONFIG)
         self.assertFalse(api.writes)
 
+
+class RelatedRolesTests(unittest.TestCase):
+    def test_live_iam_related_roles_supports_complete_plan_apply_and_readback(self):
+        class LiveApi(FakeApi):
+            def call(self, method, path, body=None, query=None):
+                response = super().call(method, path, body, query)
+                if method == 'GET' and '/iam/projects/' in path and 'projectMember' in response:
+                    detail = response['projectMember']
+                    detail['relatedRoles'] = detail.pop('roles')
+                return response
+        api = LiveApi(); plan = r.build_plan(api, CONFIG)
+        self.assertEqual(plan['rows'][0]['before'][0]['roleId'], 'project-admin')
+        self.assertFalse(api.writes)
+        with tempfile.TemporaryDirectory() as d:
+            journal = r.apply_plan(api, plan, Path(d) / 'journal.json')
+        self.assertTrue(all(x['status'] == 'VERIFIED' for x in journal['results']))
+
+    def test_live_operator_related_roles_normalized_too(self):
+        result = r.normalize_member_roles({'uuid': 'operator', 'relatedRoles': FakeApi().admin['roles']}, 'project')
+        self.assertEqual(result['roles'][0]['roleName'], 'ADMIN')
+
+    def test_conflicting_null_and_malformed_related_roles_block(self):
+        for data in [{'relatedRoles': None}, {'relatedRoles': {}}, {'relatedRoles': ['not-a-role']},
+                     {'roles': [], 'relatedRoles': [role('admin', 'ADMIN')]}]:
+            with self.assertRaises(r.LabError): r.normalize_member_roles(data, 'project')
+
+    def test_identical_dual_fields_and_explicit_empty_are_accepted(self):
+        self.assertEqual(r.normalize_member_roles({'relatedRoles': []}, 'project')['roles'], [])
+        roles = [role('id', 'name')]
+        self.assertEqual(r.normalize_member_roles({'roles': roles, 'relatedRoles': roles}, 'project')['roles'], roles)
+
 if __name__ == '__main__':
     unittest.main()
