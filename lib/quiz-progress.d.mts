@@ -1,0 +1,1 @@
+export function quizProgress(quizId:string,lessons:{id:string,version:number}[],progress:{lessonId:string,version:number,completedAt:Date|null}[]):{total:number,completed:number,unlocked:boolean,label:string};
