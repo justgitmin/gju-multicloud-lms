@@ -277,5 +277,44 @@ class RelatedRolesTests(unittest.TestCase):
         roles = [role('id', 'name')]
         self.assertEqual(r.normalize_member_roles({'roles': roles, 'relatedRoles': roles}, 'project')['roles'], roles)
 
+
+class AuthenticationDiagnosticsTests(unittest.TestCase):
+    def test_auth_check_does_not_read_plan_or_call_framework(self):
+        from unittest.mock import patch
+        import contextlib
+        import io
+        class AuthOnly:
+            def __init__(self): self.logins = 0; self.closed = False
+            def login(self): self.logins += 1
+            def close(self): self.closed = True
+            def call(self, *args, **kwargs): raise AssertionError('No Framework requests allowed')
+        api = AuthOnly()
+        with patch.object(r, 'credentials', return_value=api), patch.object(r.sys, 'argv', ['roles.py', 'auth-check']), contextlib.redirect_stdout(io.StringIO()):
+            r.main()
+        self.assertEqual(api.logins, 1); self.assertTrue(api.closed)
+
+    def test_server_hints_emit_only_fixed_labels(self):
+        hints = r.oauth_hints({'error_description': 'Invalid user access key credential: NEVER-PRINT-THIS-SECRET'})
+        self.assertEqual(hints, ['KEY_OR_CREDENTIALS', 'INVALID_OR_MISMATCH'])
+        self.assertEqual(r.oauth_hints({'error_description': {'nested': 'secret'}}), [])
+        self.assertIn('REQUEST_FORMAT', r.oauth_hints({'error_description': 'missing grant_type parameter'}))
+        self.assertIn('LIMIT', r.oauth_hints({'error_description': 'too many requests'}))
+
+    def test_hidden_input_rejects_common_copy_errors_without_echo(self):
+        key = 'a' * 20
+        for bad_key, bad_secret in [(key, 'u**********'), (key, key), (key + '\u200b', 'secret'),
+                                    ('short', 'secret'), (key, '\"secret\"'), (key, 'bad value')]:
+            with self.assertRaises(r.LabError) as raised:
+                r.check_input(bad_key, bad_secret)
+            self.assertNotIn(bad_secret, str(raised.exception))
+
+    def test_valid_input_diagnostics_do_not_reveal_either_value(self):
+        import contextlib
+        import io
+        output = io.StringIO(); key = 'k' * 20; secret = 's' * 16
+        with contextlib.redirect_stdout(output): r.check_input(key, secret)
+        self.assertIn('user_key_chars=20; secret_chars=16', output.getvalue())
+        self.assertNotIn(key, output.getvalue()); self.assertNotIn(secret, output.getvalue())
+
 if __name__ == '__main__':
     unittest.main()
