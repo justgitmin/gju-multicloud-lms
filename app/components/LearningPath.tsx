@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export default function LearningPath(){return <section className="card" aria-label="권장 학습 순서"><h2>오늘의 학습 순서</h2><ol><li><Link href="/learn/nhn-01">NHN 영상 8강</Link> · 이수 후 쉬운 NHN 퀴즈</li><li><Link href="/guide/nhn">NHN 실습 · MobaXterm SSH 접속</Link></li><li><Link href="/learn/aws-01">AWS 영상 8강</Link> · 이수 후 쉬운 AWS 퀴즈</li><li><Link href="/guide/aws">AWS 실습 · 브라우저 Session Manager 접속</Link></li></ol><p>영상은 개념, 실제 작업은 각 실습 가이드를 기준으로 진행하세요. NHN 실습 제출 후 AWS를 학습하는 순서를 권장하며 운영자 승인 대기는 다음 영상 학습을 막지 않습니다.</p></section>}
