@@ -25,7 +25,9 @@ export async function login(form:FormData){
  const encoded=user?.passwordHash??`scrypt:${'0'.repeat(32)}:${'0'.repeat(128)}`;
  const valid=await verifyPassword(password,encoded);
  if(!user||!valid)fail('/login','이메일 또는 비밀번호를 확인하세요.');
- await createSession(user.id);redirect(user.role==='ADMIN'?'/admin':'/classroom');
+ if(user.mustChangePassword&&(!user.temporaryPasswordExpiresAt||user.temporaryPasswordExpiresAt<=new Date()))fail('/login','임시 비밀번호가 만료되었습니다. 운영자에게 재발급을 요청하세요.');
+ try{await createSession(user.id,user.passwordVersion);}catch(error){if(error instanceof Error&&error.message==='STALE_CREDENTIALS')fail('/login','비밀번호가 변경되었습니다. 다시 로그인하세요.');throw error;}
+ redirect(user.mustChangePassword?'/mypage/password':user.role==='ADMIN'?'/admin':'/classroom');
 }
 export async function logout(){await destroySession();redirect('/login');}
 export async function enroll(form:FormData){
