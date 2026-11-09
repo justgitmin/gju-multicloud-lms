@@ -316,5 +316,28 @@ class AuthenticationDiagnosticsTests(unittest.TestCase):
         self.assertIn('user_key_chars=20; secret_chars=16', output.getvalue())
         self.assertNotIn(key, output.getvalue()); self.assertNotIn(secret, output.getvalue())
 
+
+class GuiCredentialTests(unittest.TestCase):
+    def test_popup_path_does_not_require_console_input(self):
+        from unittest.mock import patch
+        import contextlib
+        import io
+        key, secret = 'k' * 20, 's' * 16
+        with patch.object(r, 'gui_credentials', return_value=[key, secret]), contextlib.redirect_stdout(io.StringIO()):
+            api = r.credentials(gui=True)
+        self.assertIsNotNone(api.basic)
+        self.assertIsNone(api.token)
+
+    def test_cancellation_does_not_initialize_api(self):
+        from unittest.mock import patch
+        with patch.object(r, 'gui_credentials', side_effect=r.LabError('cancelled')), patch.object(r, 'Api') as api:
+            with self.assertRaises(r.LabError): r.credentials(gui=True)
+            api.assert_not_called()
+
+    def test_bad_character_diagnostic_identifies_field_not_value(self):
+        with self.assertRaises(r.LabError) as raised: r.check_input('k' * 20, 'secret' + chr(22))
+        self.assertIn('Secret Access Key contains', str(raised.exception))
+        self.assertNotIn('secret' + chr(22), str(raised.exception))
+
 if __name__ == '__main__':
     unittest.main()
