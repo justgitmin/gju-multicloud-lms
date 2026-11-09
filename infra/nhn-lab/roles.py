@@ -139,6 +139,8 @@ def assignments(roles, allow_empty=False):
         raise LabError('Empty or missing role assignments')
     result = []
     for role in roles:
+        if not isinstance(role, dict):
+            raise LabError('Role assignment must be an object; no write allowed')
         if role.get('roleApplyPolicyCode', 'ALLOW') != 'ALLOW':
             raise LabError('Non-ALLOW assignment requires manual review')
         role_id = role.get('roleId')
@@ -185,12 +187,29 @@ def desired_roles(roles):
     return selected
 
 
+def normalize_member_roles(data, project):
+    # Live IAM responses use relatedRoles; the published schema uses roles.
+    # Both represent explicit role bundles. Never treat absent/null data as empty.
+    result = dict(data)
+    if 'relatedRoles' in data:
+        related = data['relatedRoles']
+        if not isinstance(related, list):
+            raise LabError(project + ': relatedRoles must be an explicit list; no write allowed')
+        normalized = assignments(related, allow_empty=True)
+        if 'roles' in data:
+            if assignments(data['roles'], allow_empty=True) != normalized:
+                raise LabError(project + ': roles and relatedRoles disagree; no write allowed')
+        else:
+            result['roles'] = related
+    return result
+
+
 def member(api, project, uuid, iam=True):
     path = '/v1/' + ('iam/' if iam else '') + 'projects/' + ident(project) + '/members/' + ident(uuid)
     data = api.call('GET', path).get('projectMember')
     if not isinstance(data, dict) or data.get('uuid') != uuid:
         raise LabError('Member lookup identity mismatch')
-    return data
+    return normalize_member_roles(data, project)
 
 
 def operator(api, project, email):
