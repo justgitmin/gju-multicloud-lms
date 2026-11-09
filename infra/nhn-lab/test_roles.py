@@ -217,5 +217,34 @@ class DiagnosticTests(unittest.TestCase):
         self.assertNotIn('secret-echo', str(raised.exception))
 
 
+
+class EmptyRoleTests(unittest.TestCase):
+    def test_explicit_empty_student_roles_can_be_planned_backed_up_and_applied(self):
+        api = FakeApi()
+        api.details[(r.DEFAULT_ANCHOR, 'student-1')]['roles'] = []
+        plan = r.build_plan(api, CONFIG)
+        self.assertEqual(plan['rows'][0]['before'], [])
+        self.assertFalse(api.writes)
+        with tempfile.TemporaryDirectory() as d:
+            journal = r.apply_plan(api, plan, Path(d) / 'journal.json')
+        self.assertEqual(journal['plan']['rows'][0]['before'], [])
+        self.assertEqual(journal['results'][0]['status'], 'VERIFIED')
+
+    def test_missing_or_null_roles_are_not_assumed_empty(self):
+        for mode in ['missing', 'null', 'object']:
+            api = FakeApi()
+            detail = api.details[(r.DEFAULT_ANCHOR, 'student-1')]
+            if mode == 'missing': del detail['roles']
+            else: detail['roles'] = None if mode == 'null' else {}
+            with self.assertRaisesRegex(r.LabError, 'TBIT_Edu01_Pro01 / educity01: roles must be an explicit list'):
+                r.build_plan(api, CONFIG)
+            self.assertFalse(api.writes)
+
+    def test_operator_and_desired_roles_still_cannot_be_empty(self):
+        with self.assertRaises(r.LabError): r.assignments([])
+        api = FakeApi(); api.admin['roles'] = []
+        with self.assertRaises(r.LabError): r.build_plan(api, CONFIG)
+        self.assertFalse(api.writes)
+
 if __name__ == '__main__':
     unittest.main()
