@@ -1,3 +1,4 @@
+import {canOpenLesson} from './lesson-prerequisite.mjs';
 import {db} from './db';
 import {currentUser} from './auth';
 export async function lessonAccess(lessonId:string){
@@ -8,6 +9,6 @@ export async function lessonAccess(lessonId:string){
  if(!enrollment||enrollment.status!=='APPROVED')return null;
  const previous=await db.lesson.findMany({where:{courseId:lesson.courseId,position:{lt:lesson.position}},select:{id:true,version:true}});
  const done=await db.progress.findMany({where:{enrollmentId:enrollment.id,completedAt:{not:null}}});
- if(previous.some(l=>!done.some(p=>p.lessonId===l.id&&p.version===l.version)))return null;
+ if(!canOpenLesson(lesson,previous,done))return null;
  return {user,lesson,enrollment};
 }
