@@ -1,16 +1,16 @@
 {
   "id": "nhn-04",
   "title": "같은 웹 애플리케이션 배포",
-  "durationSeconds": 304.4,
-  "bytes": 9717992,
-  "sha256": "3d91dddb5d464b734b8270ab71e2e07e64cc12d2c206258068b55a0afb4e3f96",
-  "s3Key": "courses/2026-multicloud/nhn/04/v1/nhn-04.mp4",
-  "captionKey": "courses/2026-multicloud/nhn/04/v1/captions-ko.vtt",
-  "status": "technically-verified; final listening pending",
+  "durationSeconds": 310.2,
+  "bytes": 9770309,
+  "sha256": "981f0b687d9cbe0cbf45216881fdfd15f2d48321a3691824a390b7af67745b5a",
+  "s3Key": "courses/2026-multicloud/nhn/04/v2/nhn-04.mp4",
+  "captionKey": "courses/2026-multicloud/nhn/04/v2/captions-ko.vtt",
+  "status": "nhn-first-revised; technically-verified; final listening pending",
   "serverUploaded": false,
   "decodeCheck": "passed",
   "audioReview": "pending",
-  "syncRevision": 3,
+  "syncRevision": 4,
   "syncCheck": "PCM/frame/encoded-speech/page-boundary passed",
-  "captionRevision": 1
+  "captionRevision": 2
 }

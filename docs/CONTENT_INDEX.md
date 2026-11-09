@@ -11,17 +11,19 @@
 | aws-05 | S3 업로드와 접근 권한 | 5:10 | `courses/2026-multicloud/aws/05/v1/aws-05.mp4` |
 | aws-06 | RDS 구성과 연결 구조 | 5:16 | `courses/2026-multicloud/aws/06/v1/aws-06.mp4` |
 | aws-07 | IAM 최소 권한과 운영 점검 | 5:16 | `courses/2026-multicloud/aws/07/v1/aws-07.mp4` |
-| aws-08 | 결과 제출과 리소스 정리 | 5:10 | `courses/2026-multicloud/aws/08/v1/aws-08.mp4` |
-| nhn-01 | 조직·프로젝트·권한 확인 | 5:15 | `courses/2026-multicloud/nhn/01/v1/nhn-01.mp4` |
-| nhn-02 | VPC·Subnet·보안 설정 | 5:08 | `courses/2026-multicloud/nhn/02/v1/nhn-02.mp4` |
-| nhn-03 | Instance 생성과 SSH 접속 | 5:10 | `courses/2026-multicloud/nhn/03/v1/nhn-03.mp4` |
-| nhn-04 | 같은 웹 애플리케이션 배포 | 5:04 | `courses/2026-multicloud/nhn/04/v1/nhn-04.mp4` |
-| nhn-05 | Object Storage 활용 | 5:04 | `courses/2026-multicloud/nhn/05/v1/nhn-05.mp4` |
+| aws-08 | 결과 제출과 리소스 정리 | 5:19 | `courses/2026-multicloud/aws/08/v2/aws-08.mp4` |
+| nhn-01 | 조직·프로젝트·권한 확인 | 5:19 | `courses/2026-multicloud/nhn/01/v2/nhn-01.mp4` |
+| nhn-02 | VPC·Subnet·보안 설정 | 5:06 | `courses/2026-multicloud/nhn/02/v2/nhn-02.mp4` |
+| nhn-03 | Instance 생성과 SSH 접속 | 5:05 | `courses/2026-multicloud/nhn/03/v2/nhn-03.mp4` |
+| nhn-04 | 같은 웹 애플리케이션 배포 | 5:10 | `courses/2026-multicloud/nhn/04/v2/nhn-04.mp4` |
+| nhn-05 | Object Storage 활용 | 5:09 | `courses/2026-multicloud/nhn/05/v2/nhn-05.mp4` |
 | nhn-06 | DB 서비스와 연결 구조 | 5:07 | `courses/2026-multicloud/nhn/06/v1/nhn-06.mp4` |
 | nhn-07 | 모니터링과 장애 확인 | 5:13 | `courses/2026-multicloud/nhn/07/v1/nhn-07.mp4` |
-| nhn-08 | 서비스 매핑과 자원 정리 | 5:23 | `courses/2026-multicloud/nhn/08/v1/nhn-08.mp4` |
+| nhn-08 | 서비스 매핑과 자원 정리 | 5:36 | `courses/2026-multicloud/nhn/08/v2/nhn-08.mp4` |
 
 ## 온라인 차시 시간 배분
 
 - AWS: 영상 44.9분 + 직접 실습 115.1분 + 평가 20분 = 180분 (학교 인정 기준 별도 확인).
 - NHN: 영상 41.4분 + 직접 실습 118.6분 + 평가 20분 = 180분 (학교 인정 기준 별도 확인).
+
+NHN 우선 과정의 선택 수정본: NHN 01–05·08, AWS08은 v2이며 나머지 9편은 기존 버전을 유지합니다. 반영 방법과 검증 범위는 VIDEO_NHN_FIRST_REPAIR.md를 참고하세요.
