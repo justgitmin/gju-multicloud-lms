@@ -1,0 +1,3 @@
+import Link from 'next/link';
+import {PortalHeader,PortalFooter} from '../components/PortalChrome';
+export default function ForgotPassword(){return <><PortalHeader guest/><main id="portal-content" className="account"><section className="panel"><div className="eyebrow">ACCOUNT HELP</div><h1>비밀번호를 잊으셨나요?</h1><p>교육 운영자에게 이름·학번·가입 이메일을 알려주고 비밀번호 초기화를 요청하세요. 기존 비밀번호나 AWS 접속키는 전달하지 마세요.</p><ol><li>운영자가 본인 확인 후 임시 비밀번호를 발급합니다.</li><li>24시간 안에 가입 이메일과 임시 비밀번호로 로그인하세요.</li><li>새 비밀번호를 설정한 뒤 다시 로그인하면 학습을 이어갈 수 있습니다.</li></ol><p>이메일 자동 발송 기능은 제공하지 않습니다. 수강 기록과 실습 환경 배정은 초기화되지 않습니다.</p><Link className="button" href="/login">로그인으로 돌아가기 →</Link></section></main><PortalFooter/></>}
