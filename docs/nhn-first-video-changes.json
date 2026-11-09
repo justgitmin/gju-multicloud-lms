@@ -1,0 +1,23 @@
+{
+  "changed": [
+    "nhn-01",
+    "nhn-02",
+    "nhn-03",
+    "nhn-04",
+    "nhn-05",
+    "nhn-08",
+    "aws-08"
+  ],
+  "preserved": [
+    "aws-01",
+    "aws-02",
+    "aws-03",
+    "aws-04",
+    "aws-05",
+    "aws-06",
+    "aws-07",
+    "nhn-06",
+    "nhn-07"
+  ],
+  "reason": "Remove completed-AWS assumptions and reversed course handoffs; preserve independent concept lessons. NHN06/07 comparison tasks are supplemented after AWS as explained in NHN08 and guide."
+}
