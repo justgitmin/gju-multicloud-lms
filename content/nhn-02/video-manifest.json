@@ -1,16 +1,16 @@
 {
   "id": "nhn-02",
   "title": "VPC·Subnet·보안 설정",
-  "durationSeconds": 307.8,
-  "bytes": 10368160,
-  "sha256": "61cfbb0cca8a231a1c6c560a2793941096b51fa72fe002681b65f6108eee5d29",
-  "s3Key": "courses/2026-multicloud/nhn/02/v1/nhn-02.mp4",
-  "captionKey": "courses/2026-multicloud/nhn/02/v1/captions-ko.vtt",
-  "status": "technically-verified; final listening pending",
+  "durationSeconds": 306.26666666666665,
+  "bytes": 9916369,
+  "sha256": "75db6aaf7669423027970d468b2d25cd57937ec9dfe4e44ae33818698bf809c3",
+  "s3Key": "courses/2026-multicloud/nhn/02/v2/nhn-02.mp4",
+  "captionKey": "courses/2026-multicloud/nhn/02/v2/captions-ko.vtt",
+  "status": "nhn-first-revised; technically-verified; final listening pending",
   "serverUploaded": false,
   "decodeCheck": "passed",
   "audioReview": "pending",
-  "syncRevision": 3,
+  "syncRevision": 4,
   "syncCheck": "PCM/frame/encoded-speech/page-boundary passed",
-  "captionRevision": 1
+  "captionRevision": 2
 }
