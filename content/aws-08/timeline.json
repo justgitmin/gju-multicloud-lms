@@ -1,8 +1,8 @@
 {
-  "duration": 309.6666666666667,
+  "duration": 319.26666666666665,
   "fps": 15,
-  "totalFrames": 4645,
-  "totalSamples": 7432000,
+  "totalFrames": 4789,
+  "totalSamples": 7662400,
   "scenes": [
     {
       "scene": 1,
@@ -391,13 +391,13 @@
     },
     {
       "scene": 8,
-      "title": "다음 단계 / 같은 원리로 다른 클라우드",
+      "title": "마무리 / NHN과 AWS 결과 연결",
       "startFrame": 4115,
-      "endFrame": 4645,
+      "endFrame": 4789,
       "start": 274.3333333333333,
-      "duration": 35.333333333333336,
-      "voiceDuration": 34.896,
-      "audioSource": "verified-cache",
+      "duration": 44.93333333333333,
+      "voiceDuration": 44.472,
+      "audioSource": "regenerated",
       "sentences": [
         {
           "startFrame": 4115,
@@ -408,30 +408,44 @@
         },
         {
           "startFrame": 4182,
-          "endFrame": 4299,
-          "text": "지금까지 컴퓨팅, 네트워크, 스토리지, 데이터베이스와 접근 권한을 연결했습니다.",
-          "spokenText": "지금까지 컴퓨팅, 네트워크, 스토리지, 데이터베이스와 접근 권한을 연결했습니다.",
+          "endFrame": 4286,
+          "text": "먼저 진행한 NHN 실습과 이번 AWS 결과를 같은 항목으로 비교하세요.",
+          "spokenText": "먼저 진행한 엔에이치엔 실습과 이번 에이 더블유 에스 결과를 같은 항목으로 비교하세요.",
+          "focus": 0
+        },
+        {
+          "startFrame": 4286,
+          "endFrame": 4409,
+          "text": "두 환경에서 사용한 작은 앱은 같지만 접속 방법과 주소, 권한과 운영 조건에는 차이가 있습니다.",
+          "spokenText": "두 환경에서 사용한 작은 앱은 같지만 접속 방법과 주소, 권한과 운영 조건에는 차이가 있습니다.",
           "focus": null
         },
         {
-          "startFrame": 4299,
-          "endFrame": 4401,
-          "text": "다음 NHN Cloud 실습에서는 같은 작은 앱과 점검 방법을 사용합니다.",
-          "spokenText": "다음 엔에이치엔 클라우드 실습에서는 같은 작은 앱과 점검 방법을 사용합니다.",
+          "startFrame": 4409,
+          "endFrame": 4501,
+          "text": "상품명을 일대일로 외우기보다 확인한 결과와 근거를 비교표에 적습니다.",
+          "spokenText": "상품명을 일대일로 외우기보다 확인한 결과와 근거를 비교표에 적습니다.",
           "focus": null
         },
         {
-          "startFrame": 4401,
-          "endFrame": 4497,
-          "text": "상품명을 일대일로 외우기보다 같은 역할이 어떻게 구현되는지 비교해 보세요.",
-          "spokenText": "상품명을 일대일로 외우기보다 같은 역할이 어떻게 구현되는지 비교해 보세요.",
+          "startFrame": 4501,
+          "endFrame": 4589,
+          "text": "아직 하지 못한 실습은 가이드로 보완하고 미확인 항목은 구분하세요.",
+          "spokenText": "아직 하지 못한 실습은 가이드로 보완하고 미확인 항목은 구분하세요.",
           "focus": null
         },
         {
-          "startFrame": 4497,
-          "endFrame": 4645,
-          "text": "특히 권한과 주소, 네트워크와 과금 방식은 플랫폼마다 차이가 있으므로 확인한 근거를 남기는 습관을 이어가겠습니다.",
-          "spokenText": "특히 권한과 주소, 네트워크와 과금 방식은 플랫폼마다 차이가 있으므로 확인한 근거를 남기는 습관을 이어가겠습니다.",
+          "startFrame": 4589,
+          "endFrame": 4683,
+          "text": "각 클라우드의 쉬운 퀴즈와 실습 제출, 운영자 피드백을 확인합니다.",
+          "spokenText": "각 클라우드의 쉬운 퀴즈와 실습 제출, 운영자 피드백을 확인합니다.",
+          "focus": 1
+        },
+        {
+          "startFrame": 4683,
+          "endFrame": 4789,
+          "text": "인프라 최종 삭제는 운영자가 담당하며 학교의 공식 수료 판정은 별도입니다.",
+          "spokenText": "인프라 최종 삭제는 운영자가 담당하며 학교의 공식 수료 판정은 별도입니다.",
           "focus": null
         }
       ]
