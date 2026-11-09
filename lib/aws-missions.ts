@@ -19,7 +19,7 @@ export const awsMissions = [
     "id": "aws-03",
     "title": "브라우저 접속",
     "task": "Session Manager에서 본인 서버와 지정 세션 문서를 선택합니다.",
-    "skip": "영상의 SSH·MobaXterm·개인 키·집 IP 등록은 이번 실습에서 수행하지 않습니다.",
+    "skip": "기본 환경은 Session Manager 전용입니다. 운영자가 SSH 키와 22번 접근을 별도로 제공한 서버에서만 MobaXterm을 선택할 수 있습니다.",
     "success": "whoami 결과 ubuntu",
     "step": 2
   },
