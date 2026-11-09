@@ -20,6 +20,9 @@ model User {
  name String
  studentNumber String?
  passwordHash String
+ passwordVersion Int @default(0)
+ mustChangePassword Boolean @default(false)
+ temporaryPasswordExpiresAt DateTime?
  role Role @default(STUDENT)
  createdAt DateTime @default(now())
  enrollments Enrollment[]
@@ -77,6 +80,7 @@ model Progress {
 model Session {
  id String @id @default(cuid())
  tokenHash String @unique
+ passwordVersion Int @default(0)
  userId String
  expiresAt DateTime
  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
@@ -180,4 +184,13 @@ model LabAccessAudit {
  assignmentId String?
  createdAt DateTime @default(now())
  @@index([createdAt])
+}
+
+model AccountAudit {
+ id String @id @default(cuid())
+ actorId String
+ targetUserId String
+ event String
+ createdAt DateTime @default(now())
+ @@index([targetUserId,createdAt])
 }
