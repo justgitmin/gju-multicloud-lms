@@ -18,7 +18,8 @@
     "test:integration": "node tests/integration.pg.mjs",
     "media:register-course": "node scripts/register-course-media.mjs",
     "media:verify-course": "node scripts/verify-course-media.mjs",
-    "test:lab-integration": "node tests/lab-integration.pg.mjs"
+    "test:lab-integration": "node tests/lab-integration.pg.mjs",
+    "test:account-integration": "node tests/account-integration.pg.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1164.0",
