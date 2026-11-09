@@ -134,8 +134,8 @@ def paged(api, path, key, query=None):
     raise LabError('Too many API pages')
 
 
-def assignments(roles):
-    if not isinstance(roles, list) or not roles:
+def assignments(roles, allow_empty=False):
+    if not isinstance(roles, list) or (not roles and not allow_empty):
         raise LabError('Empty or missing role assignments')
     result = []
     for role in roles:
@@ -159,6 +159,14 @@ def assignments(roles):
     if len({r['roleId'] for r in result}) != len(result):
         raise LabError('Duplicate role assignments')
     return sorted(result, key=lambda r: r['roleId'])
+
+
+def student_assignments(detail, label):
+    roles = detail.get('roles')
+    if not isinstance(roles, list):
+        fields = ', '.join(sorted(str(k) for k in detail if isinstance(k, str) and re.fullmatch(r'[A-Za-z0-9_]{1,60}', k)))
+        raise LabError(label + ': roles must be an explicit list; returned field names: ' + fields + '. No write allowed.')
+    return assignments(roles, allow_empty=True)
 
 
 def normal(value):
@@ -270,7 +278,8 @@ def build_plan(api, config):
             raise LabError('Student matches protected operator')
         catalog = paged(api, '/v1/projects/' + pid + '/roles', 'roles', {'categoryTypeCodes': ['ROLE']})
         desired = desired_roles(catalog)
-        before = assignments(detail.get('roles'))
+        before = student_assignments(detail, project['projectName'] + ' / ' + username)
+        print('CHECK', project['projectName'], username, '| direct role count:', len(before), flush=True)
         rows.append({'projectId': pid, 'projectName': project['projectName'], 'username': username,
                      'memberUuid': uuid, 'before': before, 'beforeNames': [r.get('roleName', r['roleId']) for r in detail['roles']],
                      'after': assignments(desired), 'operator': protected})
@@ -296,7 +305,7 @@ def print_plan(plan):
     print('Target roles:', ', '.join(ROLE_NAMES))
     for row in plan['rows']:
         state = 'NO CHANGE' if row['before'] == row['after'] else 'REPLACE'
-        print(row['projectName'], '<->', row['username'], '|', state, '| current:', ', '.join(row['beforeNames']))
+        print(row['projectName'], '<->', row['username'], '|', state, '| current:', (', '.join(row['beforeNames']) or '(no direct roles)'))
     print('Infrastructure VIEWER includes Key Pair/Direct Connect/NAS(Offline) write exceptions; not strict read-only.')
     print('Only existing project IAM role assignments are changed; no infrastructure, passwords or LMS records are modified.')
 
@@ -319,7 +328,7 @@ def apply_plan(api, saved, log_path):
         record()
         try:
             current = member(api, row['projectId'], row['memberUuid'])
-            if current.get('id') != row['username'] or assignments(current.get('roles')) != row['before']:
+            if current.get('id') != row['username'] or student_assignments(current, row['projectName'] + ' / ' + row['username']) != row['before']:
                 raise LabError('Student changed after preflight')
             if operator(api, row['projectId'], saved['config']['operatorEmail']) != row['operator']:
                 raise LabError('Operator roles changed after preflight')
