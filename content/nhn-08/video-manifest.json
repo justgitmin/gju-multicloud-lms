@@ -1,16 +1,16 @@
 {
   "id": "nhn-08",
   "title": "서비스 매핑과 자원 정리",
-  "durationSeconds": 323.1333333333333,
-  "bytes": 10420921,
-  "sha256": "58f3d7c7706f1edaa231bb32d32e6d677a854524936fc30c4dea5fc4d499808d",
-  "s3Key": "courses/2026-multicloud/nhn/08/v1/nhn-08.mp4",
-  "captionKey": "courses/2026-multicloud/nhn/08/v1/captions-ko.vtt",
-  "status": "technically-verified; final listening pending",
+  "durationSeconds": 335.93333333333334,
+  "bytes": 11090878,
+  "sha256": "d3c033c51179380d7b25cdbea24bb63a550943f7e30f5a1a64721cca0ef7d533",
+  "s3Key": "courses/2026-multicloud/nhn/08/v2/nhn-08.mp4",
+  "captionKey": "courses/2026-multicloud/nhn/08/v2/captions-ko.vtt",
+  "status": "nhn-first-revised; technically-verified; final listening pending",
   "serverUploaded": false,
   "decodeCheck": "passed",
   "audioReview": "pending",
-  "syncRevision": 3,
+  "syncRevision": 4,
   "syncCheck": "PCM/frame/encoded-speech/page-boundary passed",
-  "captionRevision": 1
+  "captionRevision": 2
 }
