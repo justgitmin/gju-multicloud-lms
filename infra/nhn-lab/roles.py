@@ -49,12 +49,13 @@ def oauth_hints(data):
     return [name for name, pattern in patterns.items() if re.search(pattern, description[:8192], re.I)]
 
 
-def check_input(key, secret):
+def check_input(key, secret, report=True):
     # Only structural diagnostics leave this function, never characters or substrings.
     if not key or not secret:
         raise LabError('INPUT_CHECK: empty credential')
-    if not all(33 <= ord(c) <= 126 for c in key + secret):
-        raise LabError('INPUT_CHECK: whitespace/control/non-ASCII characters detected; paste original key text only')
+    for label, value in [('User Access Key', key), ('Secret Access Key', secret)]:
+        if not all(33 <= ord(c) <= 126 for c in value):
+            raise LabError('INPUT_CHECK: ' + label + ' contains whitespace/control/non-ASCII characters; use original key text only')
     if key.startswith(('Basic ', 'Bearer ')) or secret.startswith(('Basic ', 'Bearer ')):
         raise LabError('INPUT_CHECK: paste keys without authentication prefixes')
     if any(x.startswith(('\"', "'")) or x.endswith(('\"', "'")) for x in (key, secret)):
@@ -67,7 +68,8 @@ def check_input(key, secret):
         raise LabError('INPUT_CHECK: identical key and secret; the two fields require different values')
     if ':' in key:
         raise LabError('INPUT_CHECK: invalid User Access Key separator')
-    print('INPUT_CHECK: user_key_chars=' + str(len(key)) + '; secret_chars=' + str(len(secret)) + '; visible_ASCII=yes', flush=True)
+    if report:
+        print('INPUT_CHECK: user_key_chars=' + str(len(key)) + '; secret_chars=' + str(len(secret)) + '; visible_ASCII=yes', flush=True)
 
 
 class Api:
@@ -412,7 +414,64 @@ def apply_plan(api, saved, log_path):
     return journal
 
 
-def credentials():
+def gui_credentials():
+    try:
+        import tkinter as tk
+        from tkinter import ttk
+        root = tk.Tk()
+    except Exception:
+        raise LabError('Credential window unavailable; use a Windows Python installation with tkinter') from None
+    root.title('NHN Cloud - API credentials')
+    root.resizable(False, False)
+    root.attributes('-topmost', True)
+    frame = ttk.Frame(root, padding=20)
+    frame.grid()
+    ttk.Label(frame, text='Keys stay on this PC. No keys are saved or printed.').grid(row=0, column=0, columnspan=3, sticky='w', pady=(0, 12))
+    entries = []
+    status = tk.StringVar()
+    result = []
+    def paste(entry):
+        try:
+            value = root.clipboard_get().strip()
+        except tk.TclError:
+            status.set('Clipboard has no text. Copy the original key first.')
+            return
+        entry.delete(0, 'end')
+        entry.insert(0, value)
+        status.set('Pasted. Characters are hidden.')
+    for index, label in enumerate(['User Access Key', 'Secret Access Key'], 1):
+        ttk.Label(frame, text=label).grid(row=index, column=0, sticky='w', padx=(0, 12), pady=7)
+        entry = ttk.Entry(frame, width=42, show='*')
+        entry.grid(row=index, column=1, pady=7)
+        ttk.Button(frame, text='Paste', command=lambda e=entry: paste(e)).grid(row=index, column=2, padx=(8, 0))
+        entries.append(entry)
+    ttk.Label(frame, textvariable=status, wraplength=570).grid(row=3, column=0, columnspan=3, sticky='w', pady=12)
+    def submit():
+        key, secret = (entry.get().strip() for entry in entries)
+        try:
+            check_input(key, secret, report=False)
+        except LabError as error:
+            status.set(str(error))
+            return
+        result.extend([key, secret])
+        for entry in entries:
+            entry.delete(0, 'end')
+        root.destroy()
+    ttk.Button(frame, text='Continue', command=submit).grid(row=4, column=1, sticky='e')
+    ttk.Button(frame, text='Cancel', command=root.destroy).grid(row=4, column=2, padx=(8, 0))
+    root.bind('<Return>', lambda event: submit())
+    entries[0].focus_set()
+    root.mainloop()
+    if not result:
+        raise LabError('Credential input cancelled; no API requests made')
+    return result
+
+
+def credentials(gui=False):
+    if gui:
+        key, secret = gui_credentials()
+        check_input(key, secret)
+        return Api(key, secret)
     # Refuse getpass fallback to echoing stdin (e.g. PowerShell ISE/noninteractive host).
     if not sys.stdin.isatty():
         raise LabError('Run in an interactive PowerShell/Terminal; redirected credential input is not supported')
@@ -432,6 +491,7 @@ def credentials():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['plan', 'apply', 'auth-check'])
+    parser.add_argument('--gui-credentials', action='store_true', help='Use masked popup fields and clipboard Paste buttons')
     parser.add_argument('--org-id', default=DEFAULT_ORG)
     parser.add_argument('--project-prefix', default='TBIT_Edu01_Pro')
     parser.add_argument('--student-prefix', default='educity')
@@ -452,7 +512,7 @@ def main():
             raise LabError('Invalid saved plan configuration')
     else:
         config = settings(args)
-    api = credentials()
+    api = credentials(gui=True) if args.gui_credentials else credentials()
     try:
         if args.action == 'auth-check':
             print('AUTH_CHECK: Python ' + sys.version.split()[0] + '; system_proxy_configured=' + ('yes' if urllib.request.getproxies() else 'no'), flush=True)
