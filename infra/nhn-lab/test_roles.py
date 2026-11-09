@@ -188,6 +188,34 @@ class RoleTests(unittest.TestCase):
         self.assertNotIn('Authorization', calls[1].headers)
         self.assertEqual(api.basic, ''); self.assertIsNone(api.token)
 
+class DiagnosticTests(unittest.TestCase):
+    def test_http_error_identifies_endpoint_but_does_not_echo_credentials(self):
+        import io
+        import urllib.error
+        class Opener:
+            def open(self, request, timeout):
+                body = json.dumps({'error': 'invalid_client', 'error_description': 'DO-NOT-PRINT-SECRET',
+                                   'header': {'resultCode': -100, 'resultMessage': 'DO-NOT-PRINT-SECRET'}}).encode()
+                raise urllib.error.HTTPError(request.full_url, 400, 'bad', {}, io.BytesIO(body))
+        api = r.Api('hidden-key', 'hidden-secret'); api.opener = Opener()
+        with self.assertRaises(r.LabError) as raised: api.login()
+        message = str(raised.exception)
+        self.assertIn('POST /oauth2/token/create: HTTP 400', message)
+        self.assertIn('oauth=invalid_client', message)
+        self.assertIn('resultCode=-100', message)
+        self.assertNotIn('DO-NOT-PRINT', message)
+        self.assertNotIn('hidden-secret', message)
+
+    def test_untrusted_machine_error_is_not_printed(self):
+        import io
+        import urllib.error
+        class Opener:
+            def open(self, request, timeout):
+                raise urllib.error.HTTPError(request.full_url, 400, 'bad', {}, io.BytesIO(b'{"error":"secret-echo","header":{"resultCode":"secret-echo"}}'))
+        api = r.Api('key', 'secret'); api.opener = Opener()
+        with self.assertRaises(r.LabError) as raised: api.login()
+        self.assertNotIn('secret-echo', str(raised.exception))
+
 
 if __name__ == '__main__':
     unittest.main()
