@@ -9,7 +9,7 @@ try{
  if(existing)throw new Error('Account already exists. Refusing to change its password or role.');
  await db.$transaction(async tx=>{
  await tx.user.create({data:{email,name:'교육 운영자',passwordHash:await hashPassword(password),role:'ADMIN'}});
- await tx.course.upsert({where:{id:'gju-multicloud-2026'},create:{id:'gju-multicloud-2026',title:'AWS·NHN Cloud 멀티클라우드 운영',published:true},update:{}});
+ await tx.course.upsert({where:{id:'gju-multicloud-2026'},create:{id:'gju-multicloud-2026',title:'NHN Cloud·AWS 멀티클라우드 운영',published:true},update:{}});
  });
  for(const [moduleIndex,module] of modules.entries()){for(const [i,title] of module.lessons.entries()){const id=`${module.id}-${String(i+1).padStart(2,'0')}`;await db.lesson.upsert({where:{id},create:{id,courseId:'gju-multicloud-2026',title,position:moduleIndex*8+i+1,durationSeconds:module.durationSeconds[i]},update:{}});}}
  console.log('Administrator and course initialized.');
