@@ -40,11 +40,12 @@ try{
  response=await fetch(base+'/learn/aws-02',{headers:{cookie:studentCookie},redirect:'manual'});check(response.status===200,'Completion unlocks next lesson page');
 
  response=await action('/course/gju-multicloud-2026',{labId:'aws-lab',content:'네트워크와 웹 서비스, 데이터베이스 연결 및 정리 결과를 기록한 테스트 제출입니다.',url:'https://example.com/work'},studentCookie);check(await prisma.submission.count()===1,'Student lab submission saved');
- // Quiz eligibility uses current-version completion of every lesson.
+ // AWS eligibility must not wait for NHN lessons.
  const allLessons=await prisma.lesson.findMany({where:{courseId:'gju-multicloud-2026'}});
  const approved=await prisma.enrollment.findFirstOrThrow({where:{user:{email:'student@example.invalid'},courseId:'gju-multicloud-2026'}});
- for(const lesson of allLessons)await prisma.progress.upsert({where:{enrollmentId_lessonId_version:{enrollmentId:approved.id,lessonId:lesson.id,version:lesson.version}},create:{enrollmentId:approved.id,lessonId:lesson.id,version:lesson.version,completedAt:new Date()},update:{completedAt:new Date()}});
- response=await action('/course/gju-multicloud-2026',{quizId:'aws-quiz','answer-0':'0','answer-1':'1','answer-2':'2','answer-3':'3','answer-4':'1'},studentCookie);const attempt=await prisma.quizAttempt.findFirst();check(attempt?.score===100,'Quiz graded on server');
+ for(const lesson of allLessons.filter(l=>l.id.startsWith('aws-')))await prisma.progress.upsert({where:{enrollmentId_lessonId_version:{enrollmentId:approved.id,lessonId:lesson.id,version:lesson.version}},create:{enrollmentId:approved.id,lessonId:lesson.id,version:lesson.version,completedAt:new Date()},update:{completedAt:new Date()}});
+ response=await action('/course/gju-multicloud-2026',{quizId:'aws-quiz','answer-0':'0','answer-1':'1','answer-2':'1','answer-3':'0','answer-4':'1'},studentCookie);const attempt=await prisma.quizAttempt.findFirst();check(attempt?.score===100,'AWS quiz graded before NHN lessons are complete');
+ response=await fetch(base+'/course/gju-multicloud-2026',{headers:{cookie:studentCookie}});html=await response.text();check(!html.includes('name="quizId" value="nhn-quiz"'),'NHN quiz remains locked');
  response=await fetch(base+'/api/admin/results',{headers:{cookie:studentCookie}});check(response.status===403,'Student cannot export report');
  response=await fetch(base+'/api/admin/results',{headers:{cookie:adminCookie}});check(response.ok&&(await response.text()).includes('테스트 학생'),'Admin CSV report contains enrollment');
  response=await fetch(base+'/api/lessons/aws-01/playback',{method:'POST',headers:{cookie:studentCookie,origin:'https://other.invalid','Content-Type':'application/json'},body:JSON.stringify({action:'start'})});check(response.status===403,'Cross-origin playback mutation rejected');
