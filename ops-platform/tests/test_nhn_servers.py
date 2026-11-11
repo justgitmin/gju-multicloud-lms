@@ -4,7 +4,7 @@ from urllib.parse import urlparse,parse_qs
 from cryptography.hazmat.primitives import serialization
 import test_nhn_batch as fixture
 from cloudops.nhn_servers import Servers,generate_key
-from cloudops.nhn_batch import CloudError
+from cloudops.nhn_batch import CloudError,project_target,scoped_projects
 
 class ServerAPI(fixture.FakeAPI):
  added=[]
@@ -92,6 +92,26 @@ class ServerTests(unittest.TestCase):
   self.prepare();self.servers.apply(self.b['id']);r=self.post('/nhn/batches/'+self.b['id']+'/servers/student',{'student':'s01','password':'A-long-test-password!'});self.assertEqual(r.status_code,200)
   import zipfile,io
   z=zipfile.ZipFile(io.BytesIO(r.content));self.assertTrue(all(x.startswith('s01/') for x in z.namelist()));self.assertEqual(len([x for x in z.namelist() if x.endswith('.pem')]),1);self.assertNotIn(b'SECRET-UAK',r.content)
+ def test_org_boundary_uses_global_student_number(self):
+  cfg={'org':'edu01','project_prefix':'TBIT_Edu01_Pro','project_scopes':[{'first':1,'last':10,'org':'edu01','prefix':'TBIT_Edu01_Pro'},{'first':11,'last':14,'org':'edu02','prefix':'TBIT_Edu02_Pro'}]}
+  self.assertEqual(project_target(cfg,10),('edu01','TBIT_Edu01_Pro10'))
+  self.assertEqual(project_target(cfg,11),('edu02','TBIT_Edu02_Pro11'))
+  self.assertEqual(project_target(cfg,14),('edu02','TBIT_Edu02_Pro14'))
+  class API:
+   def projects(self,org):return [org]
+  self.assertEqual(scoped_projects(API(),cfg),{'edu01':['edu01'],'edu02':['edu02']})
+ def test_public_lab_rules_allow_all_protocols_and_both_families(self):
+  self.prepare();cfg=json.loads(self.db.one('SELECT config FROM nhn_batches')['config']);cfg['public_lab_ports']=True;self.db.execute('UPDATE nhn_batches SET config=?',(json.dumps(cfg),));self.servers.plan(self.b['id']);self.servers.apply(self.b['id'])
+  rules=Infra.clouds['project01']['/security-group-rules']
+  self.assertEqual(len(rules),4)
+  self.assertTrue(all('protocol' not in r and 'port_range_min' not in r for r in rules))
+  self.assertEqual({r['remote_ip_prefix'] for r in rules},{'0.0.0.0/0','::/0'})
+ def test_narrow_existing_rule_does_not_satisfy_all_ports(self):
+  self.prepare();infra=Infra(ServerAPI({},'KR1'),{'projectId':'project01'});infra.cloud['/security-groups']=[{'id':'sg','name':'lab'}];infra.cloud['/security-group-rules']=[{'direction':'ingress','ethertype':'IPv4','protocol':'tcp','port_range_min':80,'port_range_max':80,'remote_ip_prefix':'0.0.0.0/0'}]
+  self.servers.ensure_rules(infra,{'id':'sg'},[{'direction':'ingress','ethertype':'IPv4','remote_ip_prefix':'0.0.0.0/0'}],{},lambda:None,'test')
+  self.assertEqual(len(infra.cloud['/security-group-rules']),2)
+ def test_more_than_ten_requires_second_org(self):
+  self.create();r=self.post('/nhn/batches/'+self.b['id']+'/servers/plan',{'last':'14','roster':''});self.assertEqual(r.status_code,400)
  def test_key_material_is_parseable_and_private(self):
   data=generate_key();key=serialization.load_pem_private_key(data['private'].encode(),password=None);self.assertEqual(key.key_size,2048);self.assertTrue(data['public'].startswith('ssh-rsa '))
 if __name__=='__main__':unittest.main()

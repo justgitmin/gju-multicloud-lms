@@ -227,6 +227,14 @@ def create_app(settings=None,start_worker=True):
   try:last=int(str(d.get('last','14')))
   except ValueError:raise HTTPException(400,'학생 수는 숫자입니다.')
   if not 1<=last<=30:raise HTTPException(400,'학생 수는 1~30명입니다.')
+  second_org=str(d.get('second_org','')).strip();second_prefix=str(d.get('second_prefix','')).strip()
+  if second_org or second_prefix:
+   if not re.fullmatch('[A-Za-z0-9_-]{1,80}',second_org) or not re.fullmatch('[A-Za-z0-9_-]{1,64}',second_prefix) or last<=10:raise HTTPException(400,'두 번째 조직 ID·프로젝트 접두사·학생 수를 확인하세요.')
+   config['project_scopes']=[{'first':1,'last':10,'org':config['org'],'prefix':config['project_prefix']},{'first':11,'last':last,'org':second_org,'prefix':second_prefix}]
+  else:
+   config.pop('project_scopes',None)
+   if last>10:raise HTTPException(400,'11명 이상이면 두 번째 조직과 프로젝트 접두사가 필요합니다.')
+  config['public_lab_ports']=d.get('public_lab_ports')=='on'
   roster={}
   for row in csv.reader(io.StringIO(str(d.get('roster','')))):
    if not row or not any(x.strip() for x in row):continue
@@ -258,7 +266,7 @@ def create_app(settings=None,start_worker=True):
   if not boot or not boot['state'] or not verify_password(str(d.get('password','')),actor['password']):raise HTTPException(403,'계획·Cloud Ops 관리자 비밀번호 확인')
   state=vault.open(boot['state'],'nhn-servers:'+id);item=state.get('students',{}).get(code)
   if not item or not item.get('ready'):raise HTTPException(409,'서버 준비 완료한 학생만 내려받을 수 있습니다.')
-  access={**item['person'],'student':code,'project':item['summary']['project'],'server':item['summary']['server_name'],'public_ip':item['summary']['ip'],'ssh_user':'ubuntu','key_file':item.get('key_name','기존 개인 키')+'.pem','ssh_allowed_cidrs':[r.get('remote_ip_prefix') for r in state['template']['rules'] if r.get('direction')=='ingress' and r.get('port_range_min')==22],'note':'SSH 허용 IP에 학생 PC의 공인 IP가 포함돼야 합니다. NHN IAM 로그인과 이 PEM 키는 별개입니다.'}
+  access={**item['person'],'student':code,'project':item['summary']['project'],'server':item['summary']['server_name'],'public_ip':item['summary']['ip'],'ssh_user':'ubuntu','key_file':item.get('key_name','기존 개인 키')+'.pem','ssh_allowed_cidrs':[r.get('remote_ip_prefix') for r in state['template']['rules'] if r.get('direction')=='ingress' and (r.get('port_range_min')==22 or not r.get('protocol'))],'note':'SSH 허용 IP에 학생 PC의 공인 IP가 포함돼야 합니다. NHN IAM 로그인과 이 PEM 키는 별개입니다.'}
   buffer=io.BytesIO()
   with zipfile.ZipFile(buffer,'w') as z:
    z.writestr(code+'/access.json',json.dumps(access,ensure_ascii=False,indent=2))

@@ -14,6 +14,15 @@ def ident(value):
  if not isinstance(value,str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}',value):raise CloudError('NHN 식별자 형식 오류')
  return value
 
+def project_target(cfg,n):
+ for scope in cfg.get('project_scopes',[]):
+  if scope['first']<=n<=scope['last']:return scope['org'],scope['prefix']+f'{n:02}'
+ return cfg['org'],cfg['project_prefix']+f'{n:02}'
+
+def scoped_projects(api,cfg):
+ orgs={cfg['org']}|{x['org'] for x in cfg.get('project_scopes',[])}
+ return {org:api.projects(org) for org in orgs}
+
 def rows(data,key):
  value=data.get(key)
  if not isinstance(value,list):raise CloudError('NHN 목록 응답 형식 오류: '+key)
@@ -150,11 +159,11 @@ class Batch:
   if b['state'] and any(x.get('journal') for x in self.vault.open(b['state'],'nhn-state:'+id).values()):raise CloudError('자원 생성 후에는 활성화 대신 실패 항목 재시도를 사용하세요.')
   api=API(secret,cfg['region']);failures=0
   try:
-   projects=api.projects(cfg['org']);products=api.products()
+   projects=scoped_projects(api,cfg);products=api.products()
    for n in range(cfg['first'],cfg['last']+1):
-    student=f's{n:02}';summary={'project':cfg['project_prefix']+f'{n:02}','server_name':cfg['server_prefix']+f'{n:02}-web','container':cfg['lab_prefix']+'-'+student+'-files','db_name':cfg['lab_prefix']+'-'+student+'-db','db':cfg['db']}
+    org,project_name=project_target(cfg,n);student=f's{n:02}';summary={'project':project_name,'server_name':cfg['server_prefix']+f'{n:02}-web','container':cfg['lab_prefix']+'-'+student+'-files','db_name':cfg['lab_prefix']+'-'+student+'-db','db':cfg['db']}
     try:
-     matches=[p for p in projects if p['projectName']==summary['project'] and p.get('projectStatusCode')=='STABLE']
+     matches=[p for p in projects[org] if p['projectName']==summary['project'] and p.get('projectStatusCode')=='STABLE']
      if len(matches)!=1:raise CloudError('대상 프로젝트가 없거나 정상 상태가 아닙니다.')
      pid=ident(matches[0]['projectId'])
      for key in ['objectstorage']+(['rdsformysql'] if cfg['db'] else []):
@@ -168,11 +177,11 @@ class Batch:
  def plan(self,id):
   b,cfg,secret=self.load(id);api=API(secret,cfg['region']);state={};failures=0
   try:
-   projects=api.projects(cfg['org']);products=api.products()
+   projects=scoped_projects(api,cfg);products=api.products()
    for n in range(cfg['first'],cfg['last']+1):
-    student=f's{n:02}';summary={'project':cfg['project_prefix']+f'{n:02}','server_name':cfg['server_prefix']+f'{n:02}-web','container':cfg['lab_prefix']+'-'+student+'-files','db_name':cfg['lab_prefix']+'-'+student+'-db','db':cfg['db']}
+    org,project_name=project_target(cfg,n);student=f's{n:02}';summary={'project':project_name,'server_name':cfg['server_prefix']+f'{n:02}-web','container':cfg['lab_prefix']+'-'+student+'-files','db_name':cfg['lab_prefix']+'-'+student+'-db','db':cfg['db']}
     try:
-     selected=[p for p in projects if p['projectName']==summary['project'] and p.get('projectStatusCode')=='STABLE']
+     selected=[p for p in projects[org] if p['projectName']==summary['project'] and p.get('projectStatusCode')=='STABLE']
      if len(selected)!=1:raise CloudError('정상 상태의 대상 프로젝트가 없거나 중복됩니다.')
      pid=ident(selected[0]['projectId']);compute=api.product(pid,products['instance']);storage=api.product(pid,products['objectstorage']);server=choose_server(api,compute,summary['server_name']);marker='tbit-ops:'+id+':'+pid
      container=api.container(storage,summary['container'])
