@@ -129,19 +129,19 @@ def create_app(settings=None,start_worker=True):
   if not 1<=len(name)<=100:raise HTTPException(400,'교육 이름 확인')
   try:datetime.date.fromisoformat(ends)
   except ValueError:raise HTTPException(400,'종료일 확인')
-  id=secrets.token_hex(16);store.execute('INSERT INTO events VALUES(?,?,?,?)',(id,name,ends,time.time()));store.audit(actor['email'],'EVENT_CREATE',id);return redirect()
+  id=secrets.token_hex(16);store.execute('INSERT INTO events VALUES(?,?,?,?)',(id,name,ends,time.time()));store.audit(actor['email'],'EVENT_CREATE',id);return redirect('/#events')
  @app.post('/resources/{id}/assign')
  async def assign(request:Request,id:str):
   actor,d=await form(request,['ADMIN','OPERATOR']);event=str(d.get('event_id',''));owner=str(d.get('owner','')).strip()
   if len(owner)>100 or not store.one('SELECT id FROM events WHERE id=?',(event,)) or not store.one('SELECT id FROM resources WHERE id=?',(id,)):raise HTTPException(400,'교육·자원·담당자 확인')
-  store.execute('UPDATE resources SET event_id=?,owner=? WHERE id=?',(event,owner,id));store.audit(actor['email'],'RESOURCE_ASSIGN',id);return redirect()
+  store.execute('UPDATE resources SET event_id=?,owner=? WHERE id=?',(event,owner,id));store.audit(actor['email'],'RESOURCE_ASSIGN',id);return redirect('/#resources')
  @app.post('/resources/{id}/action')
  async def resource_action(request:Request,id:str):
   actor,d=await form(request,['ADMIN','OPERATOR']);r=store.one('SELECT * FROM resources WHERE id=?',(id,));kind=str(d.get('kind',''))
   if not r or not r['event_id'] or r['missing'] or kind not in ['START','STOP']:raise HTTPException(400,'교육에 배정된 자원과 작업을 확인하세요.')
   c=connection(r['connection_id'])
   if not c['writable'] or d.get('confirm')!=r['remote_id']:raise HTTPException(400,'변경 허용 설정과 정확한 서버 ID 확인 문구가 필요합니다.')
-  queue(actor,c,kind,id);return redirect()
+  queue(actor,c,kind,id);return redirect('/#jobs')
  @app.post('/resources/{id}/metrics')
  async def metrics(request:Request,id:str):
   actor,_=await form(request);r=store.one('SELECT * FROM resources WHERE id=?',(id,))
@@ -162,7 +162,7 @@ def create_app(settings=None,start_worker=True):
   id=secrets.token_hex(16)
   try:store.execute('INSERT INTO environments(id,connection_id,event_id,lab_id,config,created) VALUES(?,?,?,?,?,?)',(id,c['id'],event,lab,json.dumps(config),time.time()))
   except sqlite3.IntegrityError:raise HTTPException(409,'이미 사용 중인 환경 이름입니다.')
-  store.audit(actor['email'],'ENVIRONMENT_PLAN',id);return redirect()
+  store.audit(actor['email'],'ENVIRONMENT_PLAN',id);return redirect('/#provision')
  @app.post('/environments/{id}/action')
  async def environment_action(request:Request,id:str):
   actor,d=await form(request,['ADMIN']);e=store.one('SELECT * FROM environments WHERE id=?',(id,));kind=str(d.get('kind',''))
@@ -170,7 +170,7 @@ def create_app(settings=None,start_worker=True):
   c=connection(e['connection_id'])
   if not c['writable'] or d.get('confirm')!=e['lab_id'] or d.get('account')!=c['account']:raise HTTPException(400,'환경 이름·AWS 계정 ID 확인 문구와 변경 허용 설정이 필요합니다.')
   if kind=='PROVISION' and e['state']:raise HTTPException(409,'생성 기록이 있는 환경입니다. 현재 상태를 확인하고 추가 학생은 새 환경 이름으로 준비하세요.')
-  queue(actor,c,kind,id);return redirect()
+  queue(actor,c,kind,id);return redirect('/#jobs')
  @app.post('/environments/{id}/student')
  async def student_download(request:Request,id:str):
   actor,d=await form(request,['ADMIN']);e=store.one('SELECT * FROM environments WHERE id=?',(id,));student=str(d.get('student',''))
@@ -305,13 +305,13 @@ def create_app(settings=None,start_worker=True):
   try:encoded=password_hash(str(d.get('password','')));store.execute('INSERT INTO users(email,name,password,role) VALUES(?,?,?,?)',(email,name,encoded,role))
   except ValueError:raise HTTPException(400,'비밀번호는 12~128자입니다.')
   except sqlite3.IntegrityError:raise HTTPException(409,'이미 등록된 이메일입니다.')
-  store.audit(actor['email'],'USER_CREATE',email);return redirect()
+  store.audit(actor['email'],'USER_CREATE',email);return redirect('/#users')
  @app.post('/users/{id}/disable')
  async def disable_user(request:Request,id:int):
   actor,_=await form(request,['ADMIN'])
   if id==actor['id']:raise HTTPException(400,'본인 계정은 중지할 수 없습니다.')
   with store.connect() as db:db.execute('UPDATE users SET active=0 WHERE id=?',(id,));db.execute('DELETE FROM sessions WHERE user_id=?',(id,))
-  store.audit(actor['email'],'USER_DISABLE',id);return redirect()
+  store.audit(actor['email'],'USER_DISABLE',id);return redirect('/#users')
  @app.post('/password')
  async def change_password(request:Request):
   actor,d=await form(request)
