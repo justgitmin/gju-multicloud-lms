@@ -34,7 +34,9 @@ class API:
  def response(self,r,label):
   if not r.is_success:raise CloudError(label+' HTTP '+str(r.status_code)+' · 운영자 키·서비스 활성화·권한 확인')
   data=r.json() if r.content else {}
-  if data.get('header',{}).get('isSuccessful') is not True:raise CloudError(label+' 응답 실패 · 서비스 활성화·권한 확인')
+  if data.get('header',{}).get('isSuccessful') is not True:
+   code=data.get('header',{}).get('resultCode');hint=f' · resultCode={code}' if type(code) is int else ''
+   raise CloudError(label+' 응답 실패'+hint+' · 서비스 활성화·권한 확인')
   return data
  def core(self,path,enable=False):
   if not self.token:
@@ -45,7 +47,8 @@ class API:
    self.token=data['access_token']
   r=self.http.request('POST' if enable else 'GET',CORE+path,headers={'x-nhn-authorization':'Bearer '+self.token})
   if enable and r.is_success and r.json().get('header',{}).get('resultCode')==13002:return {'already_enabled':True}
-  return self.response(r,'서비스 활성화' if enable else '프로젝트 조회')
+  label='서비스 활성화' if enable else ('서비스 카탈로그 조회' if path.startswith('/v1/product-uis/') else '조직 프로젝트 목록 조회' if '/organizations/' in path else '프로젝트 서비스 정보 조회')
+  return self.response(r,label)
  def projects(self,org):
   result=[];seen=set()
   for page in range(1,101):
@@ -62,10 +65,12 @@ class API:
   found={}
   def walk(items):
    for item in items:
+    if item is None:continue
+    if not isinstance(item,dict):raise CloudError('서비스 카탈로그 항목 형식 오류')
     name=re.sub(r'\s+','',item.get('productUiName','')).lower()
     if name in ['instance','objectstorage','rdsformysql'] and item.get('productId'):found.setdefault(name,set()).add(ident(item['productId']))
     walk(item.get('children') or [])
-  walk(rows(self.core('/v1/product-uis/hierarchy'),'productUiList'))
+  walk(rows(self.core('/v1/product-uis/hierarchy?productUiType=PROJECT'),'productUiList'))
   if any(len(found.get(k,set()))!=1 for k in ['instance','objectstorage','rdsformysql']):raise CloudError('서비스 카탈로그 식별 실패: 자동으로 서비스 ID를 추측하지 않습니다.')
   return {k:next(iter(v)) for k,v in found.items()}
  def product(self,project,product):
