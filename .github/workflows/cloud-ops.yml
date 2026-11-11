@@ -25,3 +25,8 @@ jobs:
       - run: docker compose -f ops-platform/compose.yaml --env-file ops-platform/.env.example config --quiet
       - run: docker build -f ops-platform/Dockerfile -t tbit-cloud-ops:test .
       - run: docker run --rm --entrypoint aws tbit-cloud-ops:test --version
+      - run: >-
+          docker run --rm --read-only --tmpfs /tmp:mode=1777 --volume /data
+          --cap-drop ALL --security-opt no-new-privileges:true --entrypoint python
+          tbit-cloud-ops:test -c
+          "import base64,secrets; from cloudops.app import create_app; create_app({'OPS_ORIGIN':'https://ops.example.com','OPS_MASTER_KEY':base64.b64encode(secrets.token_bytes(32)).decode()}); print('APP_CONFIG_OK')"
