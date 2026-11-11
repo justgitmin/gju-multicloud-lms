@@ -34,4 +34,7 @@ class NavigationTests(unittest.TestCase):
   target=next((d,parents) for _,d,parents in s.elements if d.get('id')=='connection-'+self.c['id'])
   self.assertEqual(next(p['data-view'] for _,p in reversed(target[1]) if 'data-view' in p),'connections')
   self.assertEqual(target[0]['data-cloud-card'],'NHN')
+ def test_mutations_return_to_their_own_section(self):
+  r=self.post('/events',{'name':'Another class','ends':'2026-12-01'});self.assertEqual(r.headers['location'],'/#events')
+  r=self.post('/users',{'name':'Observer','email':'observer@example.com','password':'A-long-test-password!','role':'VIEWER'});self.assertEqual(r.headers['location'],'/#users')
 if __name__=='__main__':unittest.main()
