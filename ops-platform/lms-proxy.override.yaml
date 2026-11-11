@@ -1,0 +1,9 @@
+# Optional: only if reusing the CURRENT LMS Caddy instance on the same host.
+# This changes proxy networking only; it does not replace LMS web/db services.
+services:
+  caddy:
+    networks: [default, ops_edge]
+networks:
+  ops_edge:
+    external: true
+    name: tbit_ops_edge
