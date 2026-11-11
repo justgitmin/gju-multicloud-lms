@@ -1,4 +1,4 @@
-FROM public.ecr.aws/aws-cli/aws-cli:2 AS awscli
+FROM public.ecr.aws/aws-cli/aws-cli:latest AS awscli
 FROM python:3.12-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 OPS_DATA_DIR=/data
 COPY --from=awscli /usr/local/aws-cli /usr/local/aws-cli
