@@ -21,6 +21,15 @@ class PlatformTests(unittest.TestCase):
  def assigned(self,c):
   self.post('/events',{'name':'교육','ends':'2026-11-20'});event=self.db.one('SELECT * FROM events')
   self.db.execute('INSERT INTO resources(id,connection_id,remote_id,name,state,ip,flavor,event_id,seen) VALUES(?,?,?,?,?,?,?,?,?)',('r1',c['id'],'i-1234567890abcdef0','student','running','1.2.3.4','t3.micro',event['id'],time.time()));return event
+ def test_connection_save_and_sync_return_to_matching_card(self):
+  r=self.post('/connections',{'name':'NHN pilot','provider':'NHN','region':'KR1','account':'a'*32,'username':'operator@example.com','api_password':'test-api-password'})
+  self.assertEqual(r.status_code,303);c=self.db.one('SELECT * FROM connections');saved=f'/?saved={c["id"]}#connection-{c["id"]}'
+  self.assertEqual(r.headers['location'],saved);self.assertIsNone(self.db.one('SELECT * FROM jobs'))
+  page=self.client.get(saved).text;self.assertIn(f'id="connection-{c["id"]}"',page);self.assertIn('연결 설정을 저장했습니다.',page);self.assertIn(f'action="/connections/{c["id"]}/sync"',page)
+  self.assertNotIn('연결 설정을 저장했습니다.',self.client.get('/').text)
+  r=self.post('/connections/'+c['id']+'/security',{'admin_password':'A-long-test-password!'})
+  self.assertEqual(r.headers['location'],saved)
+  r=self.post('/connections/'+c['id']+'/sync');self.assertEqual(r.status_code,303);self.assertEqual(r.headers['location'],f'/#connection-{c["id"]}');self.assertEqual(self.db.one('SELECT kind FROM jobs')['kind'],'SYNC')
  def test_encrypted_credentials_and_no_ui_disclosure(self):
   c=self.connection();self.assertNotIn('sensitive-example',Path(self.tmp.name,'ops.sqlite3').read_bytes().decode(errors='ignore'));self.assertEqual(self.vault.open(c['secret'],'connection:'+c['id'])['secret_key'],'sensitive-example');self.assertNotIn('sensitive-example',self.client.get('/').text)
   with self.assertRaises(Exception):self.vault.open(c['secret'],'connection:other')
