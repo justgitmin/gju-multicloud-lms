@@ -87,6 +87,8 @@ class Worker:
     last=time.time();admin=self.store.one("SELECT id FROM users WHERE active=1 AND role='ADMIN' ORDER BY id LIMIT 1")
     if admin:
      for c in self.store.all('SELECT * FROM connections'):
+      # New or failing credentials require an explicit operator check, not a retry loop.
+      if not c['last_sync'] or c['error']:continue
       if not self.store.one("SELECT id FROM jobs WHERE connection_id=? AND status IN ('QUEUED','RUNNING')",(c['id'],)):
        try:self.enqueue(admin['id'],c,'SYNC',c['id'])
        except Exception:pass
