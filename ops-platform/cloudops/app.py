@@ -1,4 +1,4 @@
-import base64,contextlib,datetime,io,json,os,re,secrets,sqlite3,threading,time,zipfile
+import base64,contextlib,csv,datetime,io,json,os,re,secrets,sqlite3,threading,time,zipfile
 from pathlib import Path
 from urllib.parse import urlparse
 from fastapi import FastAPI,Request,HTTPException
@@ -82,7 +82,7 @@ def create_app(settings=None,start_worker=True):
  @app.get('/')
  def dashboard(request:Request):
   actor=user(request);connections=store.all('SELECT id,name,provider,region,account,writable,last_sync,error FROM connections ORDER BY name');resources=store.all('SELECT r.*,c.provider,c.name connection_name,e.name event_name FROM resources r JOIN connections c ON c.id=r.connection_id LEFT JOIN events e ON e.id=r.event_id ORDER BY r.missing,r.name')
-  context={'user':actor,'csrf':csrf(actor),'connections':connections,'resources':resources,'nhn_batches':[{**b,'options':json.loads(b['config']),'items':[{**i,'details':json.loads(i['summary'])} for i in store.all('SELECT student,summary,status,message FROM nhn_items WHERE batch_id=? ORDER BY student',(b['id'],))]} for b in store.all('SELECT id,name,config,planned FROM nhn_batches ORDER BY created DESC')] if actor['role']=='ADMIN' else [],'events':store.all('SELECT * FROM events ORDER BY created DESC'),'environments':store.all('SELECT e.id,e.lab_id,e.connection_id,e.config,c.name connection_name FROM environments e JOIN connections c ON c.id=e.connection_id ORDER BY e.created DESC'),'jobs':store.all('SELECT j.id,j.kind,j.target,j.status,j.message,j.updated,u.email FROM jobs j JOIN users u ON u.id=j.actor ORDER BY created DESC LIMIT 50'),'audits':store.all('SELECT * FROM audits ORDER BY id DESC LIMIT 50') if actor['role']=='ADMIN' else [],'users':store.all('SELECT id,email,name,role,active FROM users ORDER BY id') if actor['role']=='ADMIN' else []}
+  context={'user':actor,'csrf':csrf(actor),'connections':connections,'resources':resources,'nhn_batches':[{**b,'options':json.loads(b['config']),'bootstrap':store.one('SELECT status FROM nhn_bootstrap WHERE batch_id=?',(b['id'],)),'items':[{**i,'details':json.loads(i['summary'])} for i in store.all('SELECT student,summary,status,message FROM nhn_items WHERE batch_id=? ORDER BY student',(b['id'],))]} for b in store.all('SELECT id,name,config,planned FROM nhn_batches ORDER BY created DESC')] if actor['role']=='ADMIN' else [],'events':store.all('SELECT * FROM events ORDER BY created DESC'),'environments':store.all('SELECT e.id,e.lab_id,e.connection_id,e.config,c.name connection_name FROM environments e JOIN connections c ON c.id=e.connection_id ORDER BY e.created DESC'),'jobs':store.all('SELECT j.id,j.kind,j.target,j.status,j.message,j.updated,u.email FROM jobs j JOIN users u ON u.id=j.actor ORDER BY created DESC LIMIT 50'),'audits':store.all('SELECT * FROM audits ORDER BY id DESC LIMIT 50') if actor['role']=='ADMIN' else [],'users':store.all('SELECT id,email,name,role,active FROM users ORDER BY id') if actor['role']=='ADMIN' else []}
   return templates.TemplateResponse(request=request,name='dashboard.html',context=context)
  @app.get('/api/overview')
  def overview(request:Request):
@@ -219,6 +219,52 @@ def create_app(settings=None,start_worker=True):
    state=vault.open(b['state'],'nhn-state:'+id)
    if any(x.get('journal') for x in state.values()):raise HTTPException(409,'생성 기록이 있어 계획을 덮어쓸 수 없습니다. 실패 항목 재시도를 사용하세요.')
   queue(actor,c,kind,id);return redirect('/#nhn-batch-'+id)
+ @app.post('/nhn/batches/{id}/servers/plan')
+ async def nhn_servers_plan(request:Request,id:str):
+  actor,d=await form(request,['ADMIN']);b=store.one('SELECT * FROM nhn_batches WHERE id=?',(id,))
+  if not b:raise HTTPException(404,'NHN 계획을 찾을 수 없습니다.')
+  c=connection(b['connection_id']);config=json.loads(b['config'])
+  try:last=int(str(d.get('last','14')))
+  except ValueError:raise HTTPException(400,'학생 수는 숫자입니다.')
+  if not 1<=last<=30:raise HTTPException(400,'학생 수는 1~30명입니다.')
+  roster={}
+  for row in csv.reader(io.StringIO(str(d.get('roster','')))):
+   if not row or not any(x.strip() for x in row):continue
+   if len(row)!=3:raise HTTPException(400,'명단은 학생코드,이름,이메일 형식입니다.')
+   code,name,email=[x.strip() for x in row]
+   if not re.fullmatch('s[0-9]{2}',code) or not 1<=int(code[1:])<=last or code in roster or not 1<=len(name)<=50 or not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email) or len(email)>254:raise HTTPException(400,'명단 코드·이름·이메일·중복을 확인하세요.')
+   roster[code]={'name':name,'email':email}
+  if len(roster)!=last:raise HTTPException(400,'학생 수와 명단 행 수가 같아야 합니다.')
+  with store.connect() as db:
+   db.execute('BEGIN IMMEDIATE')
+   if db.execute("SELECT id FROM jobs WHERE connection_id=? AND status IN ('QUEUED','RUNNING')",(c['id'],)).fetchone():raise HTTPException(409,'실행 중 작업이 끝난 뒤 계획을 만드세요.')
+   boot=db.execute('SELECT state FROM nhn_bootstrap WHERE batch_id=?',(id,)).fetchone()
+   if boot and boot['state'] and any(x.get('journal') for x in vault.open(boot['state'],'nhn-servers:'+id).get('students',{}).values()):raise HTTPException(409,'서버 생성 기록이 있습니다. 기존 계획을 재시도하세요.')
+   if b['state'] and any(x.get('journal') for x in vault.open(b['state'],'nhn-state:'+id).values()):raise HTTPException(409,'저장소/DB 생성 이력이 있습니다. 새 일괄 계획을 사용하세요.')
+   config.update({'first':1,'last':last});db.execute("UPDATE nhn_batches SET config=?,state='',planned=NULL WHERE id=?",(json.dumps(config),id));db.execute('DELETE FROM nhn_items WHERE batch_id=?',(id,))
+   db.execute("INSERT INTO nhn_bootstrap(batch_id,config,updated) VALUES(?,?,?) ON CONFLICT(batch_id) DO UPDATE SET config=excluded.config,state='',status='QUEUED',updated=excluded.updated",(id,json.dumps({'roster':roster},ensure_ascii=False),time.time()))
+   db.execute('INSERT INTO jobs VALUES(?,?,?,?,?,?,?,?,?,?,?)',(secrets.token_hex(16),actor['id'],c['id'],c['revision'],'NHN_SERVER_PLAN',id,'{}','QUEUED',time.time(),time.time(),'서버 준비 계획 조회 대기'))
+  store.audit(actor['email'],'NHN_SERVER_PLAN',id);return redirect('/#nhn-batch-'+id)
+ @app.post('/nhn/batches/{id}/servers/apply')
+ async def nhn_servers_apply(request:Request,id:str):
+  actor,d=await form(request,['ADMIN']);b=store.one('SELECT * FROM nhn_batches WHERE id=?',(id,));boot=store.one('SELECT * FROM nhn_bootstrap WHERE batch_id=?',(id,))
+  if not b or not boot or not boot['state'] or d.get('confirm')!=b['name'] or not verify_password(str(d.get('password','')),actor['password']):raise HTTPException(403,'계획·작업 이름·Cloud Ops 관리자 비밀번호를 확인하세요.')
+  c=connection(b['connection_id'])
+  if not c['writable']:raise HTTPException(400,'변경 작업 허용이 필요합니다.')
+  queue(actor,c,'NHN_SERVERS',id);return redirect('/#nhn-batch-'+id)
+ @app.post('/nhn/batches/{id}/servers/student')
+ async def nhn_server_student(request:Request,id:str):
+  actor,d=await form(request,['ADMIN']);boot=store.one('SELECT * FROM nhn_bootstrap WHERE batch_id=?',(id,));code=str(d.get('student',''))
+  if not boot or not boot['state'] or not verify_password(str(d.get('password','')),actor['password']):raise HTTPException(403,'계획·Cloud Ops 관리자 비밀번호 확인')
+  state=vault.open(boot['state'],'nhn-servers:'+id);item=state.get('students',{}).get(code)
+  if not item or not item.get('ready'):raise HTTPException(409,'서버 준비 완료한 학생만 내려받을 수 있습니다.')
+  access={**item['person'],'student':code,'project':item['summary']['project'],'server':item['summary']['server_name'],'public_ip':item['summary']['ip'],'ssh_user':'ubuntu','key_file':item.get('key_name','기존 개인 키')+'.pem','ssh_allowed_cidrs':[r.get('remote_ip_prefix') for r in state['template']['rules'] if r.get('direction')=='ingress' and r.get('port_range_min')==22],'note':'SSH 허용 IP에 학생 PC의 공인 IP가 포함돼야 합니다. NHN IAM 로그인과 이 PEM 키는 별개입니다.'}
+  buffer=io.BytesIO()
+  with zipfile.ZipFile(buffer,'w') as z:
+   z.writestr(code+'/access.json',json.dumps(access,ensure_ascii=False,indent=2))
+   if item.get('key_material'):z.writestr(code+'/'+item['key_name']+'.pem',item['key_material']['private'])
+  store.audit(actor['email'],'NHN_SERVER_STUDENT_DOWNLOAD',id+':'+code)
+  return Response(buffer.getvalue(),media_type='application/zip',headers={'Content-Disposition':f'attachment; filename="{code}-nhn-server-access.zip"'})
  @app.post('/nhn/batches/{id}/credentials')
  async def nhn_batch_credentials(request:Request,id:str):
   actor,d=await form(request,['ADMIN']);b=store.one('SELECT * FROM nhn_batches WHERE id=?',(id,))
