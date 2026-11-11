@@ -259,7 +259,8 @@ def create_app(settings=None,start_worker=True):
   if not b or not boot or not boot['state'] or d.get('confirm')!=b['name'] or not verify_password(str(d.get('password','')),actor['password']):raise HTTPException(403,'계획·작업 이름·Cloud Ops 관리자 비밀번호를 확인하세요.')
   c=connection(b['connection_id'])
   if not c['writable']:raise HTTPException(400,'변경 작업 허용이 필요합니다.')
-  queue(actor,c,'NHN_SERVERS',id);return redirect('/#nhn-batch-'+id)
+  kind='NHN_IPS' if d.get('kind')=='NHN_IPS' else 'NHN_SERVERS'
+  queue(actor,c,kind,id);return redirect('/#nhn-batch-'+id)
  @app.post('/nhn/batches/{id}/servers/student')
  async def nhn_server_student(request:Request,id:str):
   actor,d=await form(request,['ADMIN']);boot=store.one('SELECT * FROM nhn_bootstrap WHERE batch_id=?',(id,));code=str(d.get('student',''))

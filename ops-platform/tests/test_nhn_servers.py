@@ -37,6 +37,10 @@ class Infra:
   root=urlparse(path).path;query=parse_qs(urlparse(path).query)
   if root=='/vpcs' and query.get('router:external')==['true']:return {'vpcs':[{'id':'external'}]}
   kinds={'/vpcs':'vpc','/vpcsubnets':'vpcsubnet','/internetgateways':'internetgateway','/security-groups':'security_group','/security-group-rules':'security_group_rule','/floatingips':'floatingip'}
+  if root.startswith('/floatingips/'):
+   f=next(x for x in self.cloud.get('/floatingips',[]) if x['id']==root.rsplit('/',1)[1])
+   if body:f.update(body['floatingip']);f['status']='ACTIVE'
+   return {'floatingip':f}
   if root=='/security-group-ports':return {'security_group_ports':[{'id':'port1','device_id':self.cloud['servers'][0]['id']}]}
   if '/attach_gateway' in root:self.cloud['gateway']=body['gateway_id'];return {}
   if root.startswith('/vpcsubnets/'):
@@ -65,7 +69,7 @@ class ServerTests(unittest.TestCase):
   r=self.post('/nhn/batches/'+self.b['id']+'/servers/plan',{'last':str(count),'roster':roster});self.assertEqual(r.status_code,303)
   self.api_patch=patch('cloudops.nhn_servers.API',ServerAPI);self.api_patch.start();self.addCleanup(self.api_patch.stop)
   self.infra_patch=patch('cloudops.nhn_servers.Infra',Infra);self.infra_patch.start();self.addCleanup(self.infra_patch.stop)
-  template={'source_server':'source','image':'image1','flavor':'flavor1','flavor_name':'m2.c1m2','size':20,'volume_type':'HDD','az':'kr-pub-a','rules':[{'direction':'ingress','ethertype':'IPv4','protocol':'tcp','port_range_min':22,'port_range_max':22,'remote_ip_prefix':'61.84.192.32/32'},{'direction':'ingress','ethertype':'IPv4','protocol':'tcp','port_range_min':80,'port_range_max':80,'remote_ip_prefix':'0.0.0.0/0'}]}
+  template={'external_id':'external','source_server':'source','image':'image1','flavor':'flavor1','flavor_name':'m2.c1m2','size':20,'volume_type':'HDD','az':'kr-pub-a','rules':[{'direction':'ingress','ethertype':'IPv4','protocol':'tcp','port_range_min':22,'port_range_max':22,'remote_ip_prefix':'61.84.192.32/32'},{'direction':'ingress','ethertype':'IPv4','protocol':'tcp','port_range_min':80,'port_range_max':80,'remote_ip_prefix':'0.0.0.0/0'}]}
   self.tmpl=patch('cloudops.nhn_servers.Servers.template',side_effect=lambda api,b,cfg:(template,api.projects(cfg['org']),api.products()));self.tmpl.start();self.addCleanup(self.tmpl.stop)
   self.app.state.worker.run_one();self.servers=Servers(self.db,self.vault,self.app.state.worker.stop)
  def test_server_plan_creates_no_cloud_resources(self):
@@ -112,6 +116,40 @@ class ServerTests(unittest.TestCase):
   self.assertEqual(len(infra.cloud['/security-group-rules']),2)
  def test_more_than_ten_requires_second_org(self):
   self.create();r=self.post('/nhn/batches/'+self.b['id']+'/servers/plan',{'last':'14','roster':''});self.assertEqual(r.status_code,400)
+ def test_legacy_bad_label_failure_repairs_ips_without_rebuilding(self):
+  self.prepare()
+  def rejected(infra,b,cfg,code,item,port,external,save):
+   item['journal']['floating']={'intent':True};save();raise CloudError('NHN 네트워크 /floatingips HTTP 400')
+  with patch.object(self.servers,'ensure_floating',side_effect=rejected):
+   with self.assertRaises(CloudError):self.servers.apply(self.b['id'])
+  before={k:[x['id'] for x in c.get('servers',[])] for k,c in Infra.clouds.items()}
+  self.servers.repair_ips(self.b['id']);self.servers.repair_ips(self.b['id'])
+  self.assertEqual(before,{k:[x['id'] for x in c.get('servers',[])] for k,c in Infra.clouds.items()})
+  ips=[x for c in Infra.clouds.values() for x in c.get('/floatingips',[])];self.assertEqual(len(ips),2)
+  for ip in ips:self.assertRegex(ip['label'],r'^[A-Z0-9]{14}$');self.assertEqual(ip['status'],'ACTIVE');self.assertEqual(ip['port_id'],'port1')
+ def test_attach_failure_reuses_allocated_ip(self):
+  self.prepare(1);original=Infra.net;failed=[]
+  def net(infra,path,body=None,method=None):
+   if path.startswith('/floatingips/') and method=='PUT' and not failed:failed.append(True);raise CloudError('connection retry needed')
+   return original(infra,path,body,method)
+  with patch.object(Infra,'net',net):
+   with self.assertRaises(CloudError):self.servers.apply(self.b['id'])
+  self.assertEqual(len(Infra.clouds['project01']['/floatingips']),1)
+  self.servers.repair_ips(self.b['id']);self.assertEqual(len(Infra.clouds['project01']['/floatingips']),1)
+ def test_lost_allocation_response_reconciles_by_valid_label(self):
+  self.prepare(1);original=Infra.net;failed=[]
+  def net(infra,path,body=None,method=None):
+   result=original(infra,path,body,method)
+   if path=='/floatingips' and body and not failed:failed.append(True);raise TimeoutError('lost IP response')
+   return result
+  with patch.object(Infra,'net',net):
+   with self.assertRaises(CloudError):self.servers.apply(self.b['id'])
+  self.servers.repair_ips(self.b['id']);self.assertEqual(len(Infra.clouds['project01']['/floatingips']),1)
+ def test_unknown_allocation_intent_never_allocates_again(self):
+  self.prepare(1);infra=Infra(ServerAPI({},'KR1'),{'projectId':'project01'});item={'journal':{'floating':{'intent':True,'version':2,'label':'TBIT0000000001'}}}
+  with self.assertRaisesRegex(CloudError,'불명확'):
+   self.servers.ensure_floating(infra,self.b,{'lab_prefix':'gju-nhn'},'s01',item,'port1','external',lambda:None)
+  self.assertFalse(infra.cloud.get('/floatingips'))
  def test_key_material_is_parseable_and_private(self):
   data=generate_key();key=serialization.load_pem_private_key(data['private'].encode(),password=None);self.assertEqual(key.key_size,2048);self.assertTrue(data['public'].startswith('ssh-rsa '))
 if __name__=='__main__':unittest.main()

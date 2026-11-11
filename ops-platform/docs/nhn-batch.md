@@ -64,3 +64,7 @@ ADMIN 전용입니다. 프로젝트/서버를 새로 만드는 기능이 아니�
 학생별 서버 안내 ZIP은 본인의 PEM과 안내 JSON만 포함합니다. 명단 이메일과 LMS 가입 이메일이 다르면 자동 병합하지 않습니다. 학생 IAM 계정 추가/역할 확대/비밀번호 변경 메일 발송은 하지 않습니다. 학생 IAM 접속이 아직 없으면 별도로 준비해야 합니다. SSH는 템플릿의 허용 IP를 유지하므로 학생 PC IP가 다르면 추가 허용이 필요합니다. 인터넷 전체 SSH 개방은 수행하지 않습니다.
 
 서버 준비로 새로 만든 서버/플로팅 IP/키/VPC의 정리는 이번 서버 준비 기능에 포함하지 않습니다. 생성 ID와 암호화 저널을 보관하며, 기존 컨테이너·RDS 정리 메뉴와 구분합니다. 해당 메뉴로 서버까지 삭제되는 것으로 안내하지 마세요. LMS web/db 및 기존 학생 서버에는 설치/재시작 명령을 실행하지 않습니다.
+
+## Floating IP recovery
+
+NHN floating IP labels reject hyphens. The allocator uses a stable 14-character uppercase alphanumeric label and stores allocation and attachment checkpoints separately. The existing-server IP-only action never creates or rekeys a VM, enables services, or creates containers/RDS. It reconciles saved IDs/labels/attached ports before allocation and verifies the final ACTIVE port association. Only a recorded legacy `/floatingips HTTP 400` may reset the old invalid-label request intent; unknown/timeout intents never cause a second allocation. Lost successful responses reconcile the existing labeled IP.

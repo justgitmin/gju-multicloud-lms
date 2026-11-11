@@ -182,7 +182,7 @@ class Servers:
    infra.wait_server(server['id'],self.stop)
    ports=rows(infra.net('/security-group-ports?'+urlencode({'security_group_id':sg['id']})),'security_group_ports');ports=[p for p in ports if p['device_id']==server['id']]
    if len(ports)!=1:raise CloudError('서버 네트워크 포트를 하나로 확인할 수 없습니다.')
-   fip=once('floating',lambda:[x for x in rows(infra.net('/floatingips'),'floatingips') if x.get('label')==stem],lambda:infra.net('/floatingips',{'floatingip':{'floating_network_id':external[0]['id'],'port_id':ports[0]['id'],'label':stem}})['floatingip'],lambda x:x.get('port_id')==ports[0]['id'])
+   fip=self.ensure_floating(infra,b,cfg,code,item,ports[0]['id'],external[0]['id'],save)
    item['key_name']=keyname;summary['ip']=fip['floating_ip_address'];item['server_id']=server['id'];save()
   finally:infra.close()
 
@@ -199,3 +199,61 @@ class Servers:
    key='rule'+str(index)
    if key in j:raise CloudError('보안 규칙 생성 결과 확인 필요')
    j[key]={'intent':True};save();created=infra.net('/security-group-rules',{'security_group_rule':{**rule,'security_group_id':sg['id'],'description':marker}})['security_group_rule'];j[key]['id']=created['id'];save()
+
+ def ensure_floating(self,infra,b,cfg,code,item,port,external,save):
+  # NHN labels reject hyphens. Use a stable 14-character alphanumeric label.
+  label='TBIT'+b['id'][:8].upper()+code[1:]
+  legacy=cfg['lab_prefix']+'-'+code+'-'+b['id'][:6];j=item['journal'];old=j.get('floating',{})
+  matches=[x for x in rows(infra.net('/floatingips'),'floatingips') if x.get('id')==old.get('id') or x.get('label') in [label,legacy] or x.get('port_id')==port]
+  if len(matches)>1:raise CloudError('플로팅 IP가 중복됩니다. 자동 할당하지 않습니다.')
+  if matches:
+   fip=matches[0]
+   if fip.get('floating_network_id')!=external or (fip.get('port_id') and fip['port_id']!=port):raise CloudError('플로팅 IP 네트워크·연결 대상이 다릅니다.')
+   if fip.get('port_id')!=port and fip.get('label') not in [label,legacy] and fip['id']!=old.get('id'):raise CloudError('미연결 IP 소유권 확인 필요')
+   j['floating']={**old,'intent':True,'version':2,'label':fip.get('label',label),'id':fip['id']};save()
+  else:
+   if old:
+    prior=self.store.one('SELECT status,message FROM nhn_items WHERE batch_id=? AND student=?',(b['id'],code))
+    rejected_legacy=(not old.get('version') and not old.get('id') and prior and prior['status']=='SERVER_FAILED' and prior['message']=='NHN 네트워크 /floatingips HTTP 400')
+    if not rejected_legacy:raise CloudError('플로팅 IP 이전 응답이 불명확합니다. 중복 방지를 위해 새 IP를 할당하지 않습니다.')
+   j['floating']={'intent':True,'version':2,'label':label};save()
+   fip=infra.net('/floatingips',{'floatingip':{'floating_network_id':external,'label':label}})['floatingip']
+   j['floating']['id']=fip['id'];save()
+  if fip.get('port_id')!=port:
+   j['floating']['attach_intent']=True;save()
+   infra.net('/floatingips/'+ident(fip['id']),{'floatingip':{'port_id':port}},'PUT')
+  for _ in range(30):
+   actual=infra.net('/floatingips/'+ident(fip['id']))['floatingip']
+   if actual.get('port_id')==port and actual.get('status')=='ACTIVE':
+    j['floating']['attached']=True;save();return actual
+   if actual.get('port_id') and actual['port_id']!=port:raise CloudError('IP가 다른 포트에 연결되어 있습니다.')
+   if self.stop.wait(2):raise CloudError('IP 연결 대기 중단')
+  raise CloudError('플로팅 IP 연결 확인 대기 시간 초과. 새 IP는 추가 할당하지 않습니다.')
+
+ def repair_ips(self,id):
+  b,cfg,secret,boot,opts=self.load(id)
+  if not boot['state']:raise CloudError('기존 서버 준비 기록이 없습니다.')
+  state=self.vault.open(boot['state'],'nhn-servers:'+id);api=API(secret,cfg['region']);failures=0
+  try:
+   for code,item in state['students'].items():
+    if item.get('ready'):continue
+    infra=None
+    try:
+     sid=item.get('journal',{}).get('server',{}).get('id');sgid=item.get('journal',{}).get('security',{}).get('id')
+     if not sid or not sgid:raise CloudError('기존 서버·보안 그룹 생성 기록이 없습니다. IP 전용 작업은 서버를 생성하지 않습니다.')
+     product=api.product(item['project']['projectId'],state['products']['instance']);infra=Infra(api,product)
+     server=infra.compute.request('/servers/'+ident(sid))['server']
+     if server.get('metadata',{}).get('tbit_ops')!='tbit-ops-servers:'+id+':'+code or server['status']!='ACTIVE':raise CloudError('기존 소유 서버·실행 상태 확인 필요')
+     ports=rows(infra.net('/security-group-ports?'+urlencode({'security_group_id':sgid})),'security_group_ports');ports=[p for p in ports if p['device_id']==sid]
+     if len(ports)!=1:raise CloudError('서버 포트가 없거나 중복됩니다.')
+     save=lambda:self.save(id,state,'RUNNING')
+     fip=self.ensure_floating(infra,b,cfg,code,item,ports[0]['id'],state['template']['external_id'],save)
+     item['tenant']=product['externalId'];item['server_id']=sid;item['key_name']=cfg['lab_prefix']+'-'+code+'-'+id[:6]+'-key';item['summary']['ip']=fip['floating_ip_address'];self.register(b,cfg,secret,code,item);item['ready']=True;save()
+     self.batch.report(id,code,item['summary'],'SERVER_READY','기존 서버 유지 · 플로팅 IP 할당·연결 확인 완료')
+    except Exception as error:
+     failures+=1;self.save(id,state,'RUNNING');self.batch.report(id,code,item['summary'],'SERVER_FAILED',safe_error(error))
+    finally:
+     if infra:infra.close()
+   self.save(id,state,'FAILED' if failures else 'READY')
+  finally:api.close()
+  if failures:raise CloudError(f'{failures}명 IP 연결 확인 필요. 기존 서버·키·IP는 보존했습니다.')

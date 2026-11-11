@@ -69,15 +69,16 @@ class Worker:
     r=self.store.one('SELECT * FROM resources WHERE id=?',(job['target'],))
     if not r or r['connection_id']!=c['id'] or r['missing'] or not r['event_id']:raise providers.CloudError('교육에 배정된 현재 자원만 제어할 수 있습니다.')
     providers.adapter(c,secret).action(r['remote_id'],job['kind'].lower());message='요청 접수 완료 · 실제 상태는 다음 동기화에서 확인'
-   elif job['kind'] in ['NHN_PLAN','NHN_ENABLE','NHN_APPLY','NHN_CLEANUP','NHN_SERVER_PLAN','NHN_SERVERS']:
+   elif job['kind'] in ['NHN_PLAN','NHN_ENABLE','NHN_APPLY','NHN_CLEANUP','NHN_SERVER_PLAN','NHN_SERVERS','NHN_IPS']:
     from .nhn_batch import Batch
     batch=self.store.one('SELECT connection_id FROM nhn_batches WHERE id=?',(job['target'],))
     if not batch or batch['connection_id']!=c['id'] or c['provider']!='NHN':raise providers.CloudError('NHN 일괄 작업 연결 불일치')
     manager=Batch(self.store,self.vault,self.stop)
-    if job['kind'] in ['NHN_SERVER_PLAN','NHN_SERVERS']:
+    if job['kind'] in ['NHN_SERVER_PLAN','NHN_SERVERS','NHN_IPS']:
      from .nhn_servers import Servers
      servers=Servers(self.store,self.vault,self.stop)
      if job['kind']=='NHN_SERVER_PLAN':servers.plan(job['target']);message='서버 준비 계획 조회 완료 · 실제 생성 없음'
+     elif job['kind']=='NHN_IPS':servers.repair_ips(job['target']);message='기존 학생 서버 플로팅 IP 일괄 할당·연결 확인 완료'
      else:
       servers.apply(job['target'])
       current=self.store.one('SELECT state FROM nhn_batches WHERE id=?',(job['target'],))['state']
