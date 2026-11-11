@@ -5,7 +5,7 @@ import base64,ipaddress,json,secrets,time
 from urllib.parse import urlencode
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
-from .nhn_batch import API,Batch,CloudError,ident,rows,safe_error
+from .nhn_batch import API,Batch,CloudError,ident,rows,safe_error,project_target,scoped_projects
 
 class Infra:
  def __init__(self,api,product):self.api=api;self.product=product;self.compute=api.compute(product['externalId']);self.compute.auth()
@@ -59,10 +59,10 @@ class Servers:
     for r in g['security_group_rules']:
      if r.get('remote_group_id'):raise CloudError('원격 그룹을 참조하는 템플릿 규칙은 자동 복제하지 않습니다.')
      rule={k:r[k] for k in ['direction','ethertype','protocol','port_range_min','port_range_max','remote_ip_prefix'] if r.get(k) is not None}
-     if rule['direction']=='ingress' and not (rule.get('protocol')=='tcp' and rule.get('port_range_min')==rule.get('port_range_max') and rule.get('port_range_min') in [22,80]):raise CloudError('템플릿 수신 규칙은 TCP 22/80만 허용합니다.')
-     if rule['direction']=='ingress' and rule.get('port_range_min')==22 and ipaddress.ip_network(rule.get('remote_ip_prefix','0.0.0.0/0')).prefixlen!=32:raise CloudError('템플릿 SSH는 단일 IP/32 허용 상태여야 합니다.')
+     if not cfg.get('public_lab_ports') and rule['direction']=='ingress' and not (rule.get('protocol')=='tcp' and rule.get('port_range_min')==rule.get('port_range_max') and rule.get('port_range_min') in [22,80]):raise CloudError('템플릿 수신 규칙은 TCP 22/80만 허용합니다.')
+     if not cfg.get('public_lab_ports') and rule['direction']=='ingress' and rule.get('port_range_min')==22 and ipaddress.ip_network(rule.get('remote_ip_prefix','0.0.0.0/0')).prefixlen!=32:raise CloudError('템플릿 SSH는 단일 IP/32 허용 상태여야 합니다.')
      if rule not in rules:rules.append(rule)
-   if not any(r.get('port_range_min')==22 and r.get('direction')=='ingress' for r in rules):raise CloudError('템플릿에 운영자 SSH /32 규칙이 필요합니다.')
+   if not cfg.get('public_lab_ports') and not any(r.get('port_range_min')==22 and r.get('direction')=='ingress' for r in rules):raise CloudError('템플릿에 운영자 SSH /32 규칙이 필요합니다.')
    external=rows(infra.net('/vpcs?router:external=true'),'vpcs')
    public=[x for x in external if x.get('name')=='Public Network']
    if len(external)!=1 and len(public)!=1:raise CloudError('템플릿 리전의 Public Network 식별 실패')
@@ -77,11 +77,14 @@ class Servers:
    if any(x.get('journal') for x in old.get('students',{}).values()):raise CloudError('생성 이력이 있어 서버 계획을 덮어쓸 수 없습니다. 재시도를 사용하세요.')
   api=API(secret,cfg['region'])
   try:
-   template,projects,products=self.template(api,b,cfg);state={'template':template,'products':products,'students':{},'planned':time.time()}
+   template,_,products=self.template(api,b,cfg);projects=scoped_projects(api,cfg)
+   if cfg.get('public_lab_ports'):template['rules']=[{'direction':d,'ethertype':e,'remote_ip_prefix':cidr} for d in ['ingress','egress'] for e,cidr in [('IPv4','0.0.0.0/0'),('IPv6','::/0')]]
+   state={'template':template,'products':products,'students':{},'planned':time.time()}
    for n in range(cfg['first'],cfg['last']+1):
-    code=f's{n:02}';name=cfg['project_prefix']+f'{n:02}';matches=[p for p in projects if p['projectName']==name]
+    org,name=project_target(cfg,n);code=f's{n:02}';matches=[p for p in projects[org] if p['projectName']==name]
     if len(matches)>1 or (matches and matches[0].get('projectStatusCode')!='STABLE'):raise CloudError('대상 프로젝트 상태·중복 확인 필요: '+name)
     project=matches[0] if matches else None;server=None
+    if cfg.get('project_scopes') and not project:raise CloudError('지정 조직에서 기존 프로젝트를 찾을 수 없습니다: '+name)
     if project:
      raw=api.core(f'/v1/projects/{ident(project["projectId"])}/products/{products["instance"]}').get('product',{})
      if raw.get('statusCode')=='STABLE':
@@ -92,7 +95,7 @@ class Servers:
        server=found[0] if found else None
       finally:infra.close()
     summary={'project':name,'server_name':cfg['server_prefix']+f'{n:02}-web','container':cfg['lab_prefix']+'-'+code+'-files','db_name':cfg['lab_prefix']+'-'+code+'-db','db':cfg['db'],'owner':opts['roster'].get(code,{}).get('name',code),'ip':server['ip'] if server else '', 'server_action':'기존 서버 유지' if server else '서버·개별 키·VPC·IP 생성','flavor':template['flavor_name']}
-    state['students'][code]={'project':project,'existing_server':server,'summary':summary,'journal':{},'person':opts['roster'].get(code,{})}
+    state['students'][code]={'org':org,'project':project,'existing_server':server,'summary':summary,'journal':{},'person':opts['roster'].get(code,{})}
     self.batch.report(id,code,summary,'SERVER_PLANNED',summary['server_action']+' · '+template['flavor_name']+' · 20GB')
    self.save(id,state)
   finally:api.close()
@@ -107,7 +110,7 @@ class Servers:
    for code,item in state['students'].items():
     if item.get('ready'):continue
     try:
-     self.student(api,b,cfg,state,code,item);self.register(b,cfg,secret,code,item);item['ready']=True;self.save(id,state,'RUNNING');self.batch.report(id,code,item['summary'],'SERVER_READY','서버·개별 키·IP 준비 완료 · SSH 허용 IP는 템플릿과 동일')
+     self.student(api,b,cfg,state,code,item);self.register(b,cfg,secret,code,item);item['ready']=True;self.save(id,state,'RUNNING');self.batch.report(id,code,item['summary'],'SERVER_READY','서버·개별 키·IP 준비 완료 · 실습 네트워크 정책 적용 완료')
     except Exception as error:failures+=1;self.save(id,state,'RUNNING');self.batch.report(id,code,item['summary'],'SERVER_FAILED',safe_error(error))
    self.save(id,state,'FAILED' if failures else 'READY')
   finally:api.close()
@@ -135,7 +138,7 @@ class Servers:
    j[key]={'intent':True};save();x=create();j[key]['id']=x['id'];save();return x
   project=item['project']
   if not project:
-   project=once('project',lambda:[{**p,'id':p['projectId']} for p in api.projects(cfg['org']) if p['projectName']==summary['project']],lambda:(lambda p:{**p,'id':p['projectId']})(api.core(f'/v1/organizations/{ident(cfg["org"])}/projects',body={'projectName':summary['project'],'description':marker})['project']),lambda p:p.get('description')==marker)
+   project=once('project',lambda:[{**p,'id':p['projectId']} for p in api.projects(item.get('org',cfg['org'])) if p['projectName']==summary['project']],lambda:(lambda p:{**p,'id':p['projectId']})(api.core(f'/v1/organizations/{ident(item.get("org",cfg["org"]))}/projects',body={'projectName':summary['project'],'description':marker})['project']),lambda p:p.get('description')==marker)
    if not project.get('id'):project['id']=project['projectId'];j['project']['id']=project['id'];save()
    item['project']=project;save()
   pid=ident(project['projectId'])
@@ -147,7 +150,13 @@ class Servers:
    existing=[x for x in infra.compute.inventory() if x['name']==summary['server_name']]
    if item['existing_server']:
     if len(existing)!=1 or existing[0]['remote_id']!=item['existing_server']['remote_id'] or existing[0]['state']!='ACTIVE':raise CloudError('기존 서버 상태 변경: 자동 변경하지 않습니다.')
-    summary['ip']=existing[0]['ip'];item['server_id']=existing[0]['remote_id'];return
+    summary['ip']=existing[0]['ip'];item['server_id']=existing[0]['remote_id']
+    if cfg.get('public_lab_ports'):
+     detail=infra.compute.request('/servers/'+ident(item['server_id']))['server'];names={g['name'] for g in detail.get('security_groups',[])}
+     groups=[g for g in rows(infra.net('/security-groups'),'security_groups') if g['name'] in names and g['name']==cfg['lab_prefix']+'-'+code+'-web-sg']
+     if len(groups)!=1:raise CloudError('실습 서버 전용 보안 그룹을 하나로 확인할 수 없습니다.')
+     self.ensure_rules(infra,groups[0],t['rules'],j,save,marker)
+    return
    suffix=b['id'][:6];stem=cfg['lab_prefix']+'-'+code+'-'+suffix
    vpc=once('vpc',lambda:rows(infra.net('/vpcs?'+urlencode({'name':stem+'-vpc'})),'vpcs'),lambda:infra.net('/vpcs',{'vpc':{'name':stem+'-vpc','cidrv4':f'10.{40+int(code[1:])}.0.0/16'}})['vpc'])
    subnet=once('subnet',lambda:rows(infra.net('/vpcsubnets?'+urlencode({'name':stem+'-web'})),'vpcsubnets'),lambda:infra.net('/vpcsubnets',{'vpcsubnet':{'name':stem+'-web','vpc_id':vpc['id'],'cidr':f'10.{40+int(code[1:])}.1.0/24'}})['vpcsubnet'],lambda x:x['vpc_id']==vpc['id'])
@@ -159,18 +168,7 @@ class Servers:
    if rt.get('gateway_id') and rt['gateway_id']!=igw['id']:raise CloudError('라우팅 테이블에 다른 게이트웨이가 연결되었습니다.')
    if rt.get('gateway_id')!=igw['id']:infra.net('/routingtables/'+ident(rt['id'])+'/attach_gateway',{'gateway_id':igw['id']},'PUT')
    sg=once('security',lambda:rows(infra.net('/security-groups?'+urlencode({'name':stem+'-sg'})),'security_groups'),lambda:infra.net('/security-groups',{'security_group':{'name':stem+'-sg','description':marker}})['security_group'],lambda x:x.get('description')==marker)
-   actual=infra.net('/security-groups/'+ident(sg['id']))['security_group']['security_group_rules']
-   for index,rule in enumerate(t['rules']):
-    def same(r):
-     normalized=dict(r)
-     if not normalized.get('remote_ip_prefix'):normalized['remote_ip_prefix']='::/0' if normalized.get('ethertype')=='IPv6' else '0.0.0.0/0'
-     expected=dict(rule)
-     if not expected.get('remote_ip_prefix'):expected['remote_ip_prefix']='::/0' if expected.get('ethertype')=='IPv6' else '0.0.0.0/0'
-     return all(normalized.get(k)==v for k,v in expected.items())
-    if any(same(r) for r in actual):continue
-    key='rule'+str(index)
-    if key in j:raise CloudError('보안 규칙 생성 결과 확인 필요')
-    j[key]={'intent':True};save();created=infra.net('/security-group-rules',{'security_group_rule':{**rule,'security_group_id':sg['id'],'description':marker}})['security_group_rule'];j[key]['id']=created['id'];save()
+   self.ensure_rules(infra,sg,t['rules'],j,save,marker)
    if 'key_material' not in item:item['key_material']=generate_key();save()
    keyname=stem+'-key';keys=rows(infra.compute.request('/os-keypairs'),'keypairs');matching=[k['keypair'] for k in keys if k['keypair']['name']==keyname]
    if matching:
@@ -187,3 +185,17 @@ class Servers:
    fip=once('floating',lambda:[x for x in rows(infra.net('/floatingips'),'floatingips') if x.get('label')==stem],lambda:infra.net('/floatingips',{'floatingip':{'floating_network_id':external[0]['id'],'port_id':ports[0]['id'],'label':stem}})['floatingip'],lambda x:x.get('port_id')==ports[0]['id'])
    item['key_name']=keyname;summary['ip']=fip['floating_ip_address'];item['server_id']=server['id'];save()
   finally:infra.close()
+
+ def ensure_rules(self,infra,sg,rules,j,save,marker):
+  actual=infra.net('/security-groups/'+ident(sg['id']))['security_group']['security_group_rules']
+  for index,rule in enumerate(rules):
+   def same(r):
+    normalized=dict(r)
+    if not normalized.get('remote_ip_prefix'):normalized['remote_ip_prefix']='::/0' if normalized.get('ethertype')=='IPv6' else '0.0.0.0/0'
+    expected=dict(rule)
+    if not expected.get('remote_ip_prefix'):expected['remote_ip_prefix']='::/0' if expected.get('ethertype')=='IPv6' else '0.0.0.0/0'
+    return all(normalized.get(k)==v for k,v in expected.items())
+   if any(same(r) for r in actual):continue
+   key='rule'+str(index)
+   if key in j:raise CloudError('보안 규칙 생성 결과 확인 필요')
+   j[key]={'intent':True};save();created=infra.net('/security-group-rules',{'security_group_rule':{**rule,'security_group_id':sg['id'],'description':marker}})['security_group_rule'];j[key]['id']=created['id'];save()
