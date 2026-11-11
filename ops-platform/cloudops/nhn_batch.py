@@ -2,7 +2,8 @@
 
 API references and operating/recovery rules: docs/nhn-batch.md.
 """
-import base64,ipaddress,json,re,secrets,time
+import base64,copy,ipaddress,json,re,secrets,time
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 import httpx
 from .providers import CloudError,NHN
@@ -152,6 +153,17 @@ class Batch:
   if not c or c['revision']!=cfg['connection_revision']:raise CloudError('연결 인증정보가 변경되었습니다. 이 계획의 인증정보를 갱신하세요.')
   return b,cfg,self.vault.open(b['secret'],'nhn-batch:'+id)
  def save(self,id,state):self.store.execute('UPDATE nhn_batches SET state=? WHERE id=?',(self.vault.seal(state,'nhn-state:'+id),id))
+ def save_item(self,id,student,item):
+  # Parallel workers own one student's state. Merge under SQLite's write lock;
+  # never persist a stale whole-batch snapshot over another worker's journal.
+  with self.store.connect() as db:
+   db.execute('BEGIN IMMEDIATE')
+   row=db.execute('SELECT state FROM nhn_batches WHERE id=?',(id,)).fetchone()
+   if not row or not row['state']:raise CloudError('저장할 일괄 작업 상태가 없습니다.')
+   latest=self.vault.open(row['state'],'nhn-state:'+id)
+   if student not in latest:raise CloudError('학생 상태가 계획에 없습니다.')
+   latest[student]=item
+   db.execute('UPDATE nhn_batches SET state=? WHERE id=?',(self.vault.seal(latest,'nhn-state:'+id),id))
  def report(self,id,student,summary,status,message):
   self.store.execute('INSERT INTO nhn_items(batch_id,student,summary,status,message,updated) VALUES(?,?,?,?,?,?) ON CONFLICT(batch_id,student) DO UPDATE SET summary=excluded.summary,status=excluded.status,message=excluded.message,updated=excluded.updated',(id,student,json.dumps(summary),status,message,time.time()))
  def enable(self,id):
@@ -252,47 +264,57 @@ class Batch:
  def apply(self,id):
   b,cfg,secret=self.load(id)
   if not b['planned']:raise CloudError('먼저 계획을 조회하세요.')
-  state=self.vault.open(b['state'],'nhn-state:'+id);api=API(secret,cfg['region']);failures=0
-  try:
-   for student,item in state.items():
-    old=self.store.one('SELECT status FROM nhn_items WHERE batch_id=? AND student=?',(id,student))
-    if old['status']=='READY':continue
-    if old['status'] in ['CLEANED','CLEANING','CLEANUP_FAILED'] or any(v.get('delete_intent') or v.get('deleted') for v in item['journal'].values()):raise CloudError('정리를 시작한 계획은 재생성할 수 없습니다. 새 계획을 사용하세요.')
-    p=item['plan'];s=item['summary'];j=item['journal'];save=lambda:self.save(id,state)
-    self.report(id,student,s,'RUNNING','프로젝트 자원 준비 중')
-    try:
-     # Re-read immutable project identity and current server placement before any write.
-     current=api.product(p['project_id'],p['compute']['productId']);server=choose_server(api,current,s['server_name'])
-     if cfg['db']:server['subnet_id']=resolve_subnet(api,p['rds'],server)['subnetId']
-     if any(server[k]!=p['server'][k] for k in ['server_id','private_ip','subnet_id','az','tenant']):raise CloudError('계획 후 서버·네트워크가 변경되었습니다. 새 계획이 필요합니다.')
-     container=api.container(p['storage'],s['container'])
-     if container and p.get('existing_container') is not None:
-      if container['public'] or container['marker']!=p['existing_container']['marker']:raise CloudError('계획 후 기존 컨테이너 접근 정책·소유 정보가 변경되었습니다.')
-      j['container']={'reused':True};save()
-     elif container:
-      if container['marker']!=p['marker'] or container['public'] or 'container' not in j:raise CloudError('컨테이너 소유권·비공개 상태 확인 실패')
+  state=self.vault.open(b['state'],'nhn-state:'+id)
+  for student,item in state.items():
+   old=self.store.one('SELECT status FROM nhn_items WHERE batch_id=? AND student=?',(id,student))
+   if old and (old['status'] in ['CLEANED','CLEANING','CLEANUP_FAILED'] or any(v.get('delete_intent') or v.get('deleted') for v in item['journal'].values())):raise CloudError('정리를 시작한 계획은 재생성할 수 없습니다. 새 계획을 사용하세요.')
+  def prepare(student,item):
+   old=self.store.one('SELECT status FROM nhn_items WHERE batch_id=? AND student=?',(id,student))
+   if old and old['status']=='READY':return 0
+   p=item['plan'];s=item['summary'];j=item['journal'];save=lambda:self.save_item(id,student,item);api=None
+   try:
+    if self.stop.is_set():raise CloudError('서버 종료로 새 학생 작업을 시작하지 않았습니다. 재시도하세요.')
+    api=API(secret,cfg['region'])
+    self.report(id,student,s,'RUNNING','프로젝트 자원 준비 중 · 최대 학생 3명 병렬 처리')
+    # Re-read immutable project identity and current server placement before any write.
+    current=api.product(p['project_id'],p['compute']['productId']);server=choose_server(api,current,s['server_name'])
+    if cfg['db']:server['subnet_id']=resolve_subnet(api,p['rds'],server)['subnetId']
+    if any(server[k]!=p['server'][k] for k in ['server_id','private_ip','subnet_id','az','tenant']):raise CloudError('계획 후 서버·네트워크가 변경되었습니다. 새 계획이 필요합니다.')
+    container=api.container(p['storage'],s['container'])
+    if container and p.get('existing_container') is not None:
+     if container['public'] or container['marker']!=p['existing_container']['marker']:raise CloudError('계획 후 기존 컨테이너 접근 정책·소유 정보가 변경되었습니다.')
+     j['container']={'reused':True};save()
+    elif container:
+     if container['marker']!=p['marker'] or container['public'] or 'container' not in j:raise CloudError('컨테이너 소유권·비공개 상태 확인 실패')
+    else:
+     if p.get('existing_container') is not None:raise CloudError('재사용 예정 컨테이너가 사라졌습니다. 새 계획이 필요합니다.')
+     if 'container' in j:raise CloudError('이전 컨테이너 요청 결과 불명확: 클라우드 확인 필요')
+     j['container']={'intent':True};save();api.container(p['storage'],s['container'],'PUT',p['marker']);j['container']['created']=True;save()
+     check=api.container(p['storage'],s['container'])
+     if not check or check['public'] or check['marker']!=p['marker']:raise CloudError('컨테이너 생성 후 비공개·소유권 검증 실패')
+    if cfg['db']:self.ensure_rds(api,cfg,item,save)
+    # Register discovered servers in the existing inventory without replacing other assignments.
+    tenant=p['server']['tenant'];now=time.time()
+    with self.store.connect() as db:
+     db.execute('BEGIN IMMEDIATE')
+     connections=db.execute("SELECT * FROM connections WHERE provider='NHN' AND account=? AND region=?",(tenant,cfg['region'])).fetchall()
+     if len(connections)>1:raise CloudError('동일 테넌트 연결이 중복되어 서버 배정을 중단했습니다.')
+     if connections:cid=connections[0]['id']
      else:
-      if p.get('existing_container') is not None:raise CloudError('재사용 예정 컨테이너가 사라졌습니다. 새 계획이 필요합니다.')
-      if 'container' in j:raise CloudError('이전 컨테이너 요청 결과 불명확: 클라우드 확인 필요')
-      j['container']={'intent':True};save();api.container(p['storage'],s['container'],'PUT',p['marker']);j['container']['created']=True;save()
-      check=api.container(p['storage'],s['container'])
-      if not check or check['public'] or check['marker']!=p['marker']:raise CloudError('컨테이너 생성 후 비공개·소유권 검증 실패')
-     if cfg['db']:self.ensure_rds(api,cfg,item,save)
-     # Register discovered servers in the existing inventory without replacing other assignments.
-     tenant=p['server']['tenant'];now=time.time()
-     with self.store.connect() as db:
-      connections=db.execute("SELECT * FROM connections WHERE provider='NHN' AND account=? AND region=?",(tenant,cfg['region'])).fetchall()
-      if len(connections)>1:raise CloudError('동일 테넌트 연결이 중복되어 서버 배정을 중단했습니다.')
-      if connections:cid=connections[0]['id']
-      else:
-       cid=secrets.token_hex(16);encrypted=self.vault.seal({k:secret[k] for k in ['username','api_password']},'connection:'+cid)
-       db.execute("INSERT INTO connections(id,name,provider,region,account,secret,writable,last_sync) VALUES(?,?,'NHN',?,?,?,0,?)",(cid,s['project'],cfg['region'],tenant,encrypted,now))
-      existing=db.execute('SELECT event_id FROM resources WHERE connection_id=? AND remote_id=?',(cid,server['server_id'])).fetchone()
-      if existing and existing['event_id'] and existing['event_id']!=b['event_id']:raise CloudError('서버가 다른 교육에 배정되어 있습니다. 배정 변경을 확인하세요.')
-      db.execute('INSERT INTO resources(id,connection_id,remote_id,name,state,ip,flavor,event_id,owner,seen) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(connection_id,remote_id) DO UPDATE SET event_id=excluded.event_id,owner=excluded.owner',(secrets.token_hex(16),cid,server['server_id'],server['server_name'],'ACTIVE',server['ip'],'',b['event_id'],student,now))
-     self.report(id,student,s,'READY','준비 완료 · 학생 서버에서 파일·DB 실습으로 최종 확인하세요.')
-    except Exception as error:failures+=1;self.report(id,student,s,'FAILED',safe_error(error))
-  finally:api.close()
+      cid=secrets.token_hex(16);encrypted=self.vault.seal({k:secret[k] for k in ['username','api_password']},'connection:'+cid)
+      db.execute("INSERT INTO connections(id,name,provider,region,account,secret,writable,last_sync) VALUES(?,?,'NHN',?,?,?,0,?)",(cid,s['project'],cfg['region'],tenant,encrypted,now))
+     existing=db.execute('SELECT event_id FROM resources WHERE connection_id=? AND remote_id=?',(cid,server['server_id'])).fetchone()
+     if existing and existing['event_id'] and existing['event_id']!=b['event_id']:raise CloudError('서버가 다른 교육에 배정되어 있습니다. 배정 변경을 확인하세요.')
+     db.execute('INSERT INTO resources(id,connection_id,remote_id,name,state,ip,flavor,event_id,owner,seen) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(connection_id,remote_id) DO UPDATE SET event_id=excluded.event_id,owner=excluded.owner',(secrets.token_hex(16),cid,server['server_id'],server['server_name'],'ACTIVE',server['ip'],'',b['event_id'],student,now))
+    self.report(id,student,s,'READY','준비 완료 · 학생 서버에서 파일·DB 실습으로 최종 확인하세요.')
+   except Exception as error:
+    self.report(id,student,s,'FAILED',safe_error(error));return 1
+   finally:
+    if api:api.close()
+   return 0
+  with ThreadPoolExecutor(max_workers=3,thread_name_prefix='nhn-student') as pool:
+   futures=[pool.submit(prepare,student,copy.deepcopy(item)) for student,item in state.items()]
+   failures=sum(future.result() for future in futures)
   if failures:raise CloudError(f'{failures}개 프로젝트 실패/확인 필요. 완료 항목은 유지되며 재시도에서 건너뜁니다.')
  def cleanup(self,id):
   b,cfg,secret=self.load(id)
