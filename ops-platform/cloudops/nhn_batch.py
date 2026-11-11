@@ -122,11 +122,17 @@ def choose_server(api,product,name):
   if len(matches)!=1:raise CloudError('기존 학생 서버가 없거나 이름이 중복됨: '+name)
   server=client.request('/servers/'+ident(matches[0]['remote_id']))['server']
   if server.get('status')!='ACTIVE':raise CloudError('학생 서버가 ACTIVE가 아닙니다.')
-  attachments=rows(client.request('/servers/'+ident(server['id'])+'/os-interface'),'interfaceAttachments')
-  ips=[i for a in attachments for i in a.get('fixed_ips',[]) if ipaddress.ip_address(i['ip_address']).version==4]
-  if len(ips)!=1 or not ipaddress.ip_address(ips[0]['ip_address']).is_private:raise CloudError('사설 IPv4·서브넷을 하나로 확정할 수 없습니다.')
-  return {'server_id':server['id'],'server_name':server['name'],'ip':matches[0]['ip'],'private_ip':ips[0]['ip_address'],'subnet_id':ips[0]['subnet_id'],'az':server['OS-EXT-AZ:availability_zone'],'tenant':tenant}
+  ips=[a['addr'] for group in server.get('addresses',{}).values() for a in group if ipaddress.ip_address(a['addr']).version==4 and any(ipaddress.ip_address(a['addr']) in ipaddress.ip_network(cidr) for cidr in ['10.0.0.0/8','172.16.0.0/12','192.168.0.0/16'])]
+  ips=list(dict.fromkeys(ips))
+  if len(ips)!=1:raise CloudError('서버 상세에서 사설 IPv4를 하나로 확정할 수 없습니다.')
+  return {'server_id':server['id'],'server_name':server['name'],'ip':matches[0]['ip'],'private_ip':ips[0],'subnet_id':'','az':server['OS-EXT-AZ:availability_zone'],'tenant':tenant}
  finally:client.http.close()
+
+def resolve_subnet(api,product,server):
+ subnets=rows(api.rds(product,'/network/subnets'),'subnets')
+ matches=[x for x in subnets if ipaddress.ip_address(server['private_ip']) in ipaddress.ip_network(x['subnetCidr'])]
+ if len(matches)!=1:raise CloudError('학생 서버 IP와 일치하는 RDS 서브넷을 하나로 확정하지 못했습니다.')
+ return matches[0]
 
 class Batch:
  def __init__(self,store,vault,stop):self.store=store;self.vault=vault;self.stop=stop
@@ -176,8 +182,9 @@ class Batch:
      if cfg['db']:
       rds=api.product(pid,products['rdsformysql']);existing=rows(api.rds(rds,'/db-instances'),'dbInstances')
       if any(x['dbInstanceName']==summary['db_name'] for x in existing):raise CloudError('같은 이름의 DB가 있습니다. 기존 DB는 변경하지 않습니다.')
-      subnets=rows(api.rds(rds,'/network/subnets'),'subnets')
-      if not any(x['subnetId']==server['subnet_id'] and x.get('availableIpCount',0)>0 for x in subnets):raise CloudError('학생 서버 서브넷에 RDS 생성 가능한 IP가 없습니다.')
+      subnet=resolve_subnet(api,rds,server)
+      if subnet.get('availableIpCount',0)<=0:raise CloudError('학생 서버 서브넷에 RDS 생성 가능한 IP가 없습니다.')
+      server['subnet_id']=subnet['subnetId'];summary['subnet_id']=subnet['subnetId']
       if 'General SSD' not in rows(api.rds(rds,'/storage-types'),'storageTypes'):raise CloudError('리전에서 General SSD 스토리지를 지원하지 않습니다.')
       flavors=rows(api.rds(rds,'/db-flavors'),'dbFlavors')
       chosen_flavor=cfg['db_flavor']
@@ -247,6 +254,7 @@ class Batch:
     try:
      # Re-read immutable project identity and current server placement before any write.
      current=api.product(p['project_id'],p['compute']['productId']);server=choose_server(api,current,s['server_name'])
+     if cfg['db']:server['subnet_id']=resolve_subnet(api,p['rds'],server)['subnetId']
      if any(server[k]!=p['server'][k] for k in ['server_id','private_ip','subnet_id','az','tenant']):raise CloudError('계획 후 서버·네트워크가 변경되었습니다. 새 계획이 필요합니다.')
      container=api.container(p['storage'],s['container'])
      if container and p.get('existing_container') is not None:

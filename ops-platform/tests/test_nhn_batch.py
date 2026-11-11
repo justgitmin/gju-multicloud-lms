@@ -34,7 +34,7 @@ class FakeAPI:
   if path=='/storage-types':return {'storageTypes':['General SSD']}
   if path=='/db-flavors':return {'dbFlavors':[{'dbFlavorId':'flavor1','dbFlavorName':'db.m2.c1m2','vcpus':1,'ram':2048}]}
   if path=='/db-versions':return {'dbVersions':[{'dbVersion':'MYSQL_V8045','dbVersionName':'MySQL 8.0.45'}]}
-  if path=='/network/subnets':return {'subnets':[{'subnetId':'subnet1','availableIpCount':5}]}
+  if path=='/network/subnets':return {'subnets':[{'subnetId':'subnet1','subnetCidr':'10.30.1.0/24','availableIpCount':5}]}
   if path.endswith('/db-schemas'):
    if body:type(self).objects[path]=[{'dbSchemaName':'labdb','dbSchemaStatus':'STABLE'}];return {'jobId':'schemajob'}
    return {'dbSchemas':type(self).objects.get(path,[])}
@@ -111,6 +111,9 @@ class BatchTests(unittest.TestCase):
   self.create();self.db.execute("UPDATE users SET role='OPERATOR'");self.assertEqual(self.action('NHN_APPLY').status_code,403);self.assertEqual(self.post('/nhn/batches/'+self.b['id']+'/student',{}).status_code,403);self.assertNotIn('name="access_key"',self.client.get('/').text)
 
 class TransportTests(unittest.TestCase):
+ def test_server_discovery_uses_documented_detail_addresses(self):
+  client=Mock();client.inventory.return_value=[{'name':'web','remote_id':'server1','ip':'1.2.3.4'}];client.request.return_value={'server':{'id':'server1','name':'web','status':'ACTIVE','OS-EXT-AZ:availability_zone':'kr-pub-a','addresses':{'net':[{'addr':'10.30.1.32'},{'addr':'133.186.251.193'}]}}};api=Mock();api.compute.return_value=client
+  result=choose_server(api,{'externalId':'a'*32},'web');self.assertEqual(result['private_ip'],'10.30.1.32');client.request.assert_called_once_with('/servers/server1')
  def test_catalog_requires_project_ui_type_and_handles_null_children(self):
   with patch('cloudops.nhn_batch.httpx.Client'):
    api=API({},'KR1');api.core=Mock(return_value={'productUiList':[{'productUiName':'Compute','children':[None,{'productUiName':'Instance','productId':'compute'}]},{'productUiName':'Object Storage','productId':'storage'},{'productUiName':'RDS for MySQL','productId':'rds'}]})
