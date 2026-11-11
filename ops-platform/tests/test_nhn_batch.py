@@ -92,7 +92,7 @@ class BatchTests(unittest.TestCase):
   r=self.post('/nhn/batches/'+self.b['id']+'/student',{'student':'s01','password':'A-long-test-password!'});self.assertEqual(r.status_code,200);d=r.json();self.assertEqual(d['db_host'],'10.30.1.50');self.assertTrue(d['db_password']);self.assertNotIn('s02',r.text);self.assertNotIn('SECRET-',r.text)
   self.assertNotIn(d['db_password'],self.client.get('/').text);self.assertNotIn(d['db_password'],Path(self.tmp.name,'ops.sqlite3').read_bytes().decode(errors='ignore'))
  def test_rds_payload_private_and_password_saved_before_create(self):
-  self.create(True);self.action('NHN_APPLY');self.app.state.worker.run_one();calls=[x for x in FakeAPI.calls if x[0]=='POST'];db=next(x[2] for x in calls if x[1]=='/db-instances');sg=next(x[2] for x in calls if x[1]=='/db-security-groups')
+  self.create(True);self.action('NHN_APPLY');self.app.state.worker.run_one();calls=[x for x in FakeAPI.calls if x[0]=='POST'];db=next(x[2] for x in calls if x[1]=='/db-instances' and x[2]['dbInstanceName']=='gju-nhn-s01-db');sg=next(x[2] for x in calls if x[1]=='/db-security-groups' and x[2]['dbSecurityGroupName']=='gju-nhn-s01-db-sg')
   self.assertFalse(db['network']['usePublicAccess']);self.assertFalse(db['useHighAvailability']);self.assertEqual(db['storage']['storageSize'],20);self.assertEqual(sg['rules'][0]['cidr'],'10.30.1.32/32')
   state=self.vault.open(self.db.one('SELECT state FROM nhn_batches')['state'],'nhn-state:'+self.b['id']);self.assertEqual(state['s01']['password'],db['dbPassword'])
  def test_plan_cannot_overwrite_created_journal_or_reapply_cleanup(self):
@@ -109,6 +109,37 @@ class BatchTests(unittest.TestCase):
   self.create();self.db.execute('UPDATE nhn_batches SET planned=?',(time.time()-3601,));self.assertEqual(self.action('NHN_APPLY').status_code,409)
  def test_operator_cannot_execute_or_download(self):
   self.create();self.db.execute("UPDATE users SET role='OPERATOR'");self.assertEqual(self.action('NHN_APPLY').status_code,403);self.assertEqual(self.post('/nhn/batches/'+self.b['id']+'/student',{}).status_code,403);self.assertNotIn('name="access_key"',self.client.get('/').text)
+
+ def test_parallel_three_students_keep_all_journals_and_private_credentials(self):
+  id=self.create(True);cfg=json.loads(self.db.one('SELECT config FROM nhn_batches')['config']);cfg['last']=6;self.db.execute('UPDATE nhn_batches SET config=?',(json.dumps(cfg),))
+  projects=[{'projectId':f'project{n:02}','projectName':f'TBIT_Edu01_Pro{n:02}','orgId':cfg['org'],'projectStatusCode':'STABLE'} for n in range(1,7)]
+  with patch.object(FakeAPI,'projects',return_value=projects):self.manager.plan(id)
+  barrier=threading.Barrier(3);lock=threading.Lock();active=0;peak=0;clients=[]
+  class ParallelAPI(FakeAPI):
+   def __init__(self,*args):super().__init__(*args);self.owner=threading.get_ident();clients.append(self)
+   def container(api,product,name,method='HEAD',marker=None):
+    nonlocal active,peak
+    self.assertEqual(api.owner,threading.get_ident())
+    if method!='PUT':return super(ParallelAPI,api).container(product,name,method,marker)
+    with lock:active+=1;peak=max(peak,active)
+    try:
+     barrier.wait(timeout=5)
+     return super(ParallelAPI,api).container(product,name,method,marker)
+    finally:
+     with lock:active-=1
+  with patch('cloudops.nhn_batch.API',ParallelAPI):
+   self.manager.apply(id);before=len(FakeAPI.calls);self.manager.apply(id)
+  self.assertEqual(peak,3);self.assertEqual(len(clients),6);self.assertEqual(len(FakeAPI.calls),before)
+  self.assertEqual(self.db.one("SELECT count(*) n FROM nhn_items WHERE status='READY'")['n'],6)
+  state=self.vault.open(self.db.one('SELECT state FROM nhn_batches')['state'],'nhn-state:'+id)
+  self.assertEqual(len(state),6)
+  for code,item in state.items():
+   db=next(x[2] for x in FakeAPI.calls if x[0]=='POST' and x[1]=='/db-instances' and x[2]['dbInstanceName']==item['summary']['db_name'])
+   self.assertEqual(item['password'],db['dbPassword']);self.assertEqual(item['access']['db_password'],item['password']);self.assertTrue(item['journal']['container']['created']);self.assertTrue(item['journal']['database']['id'])
+ def test_stop_prevents_waiting_students_starting_cloud_requests(self):
+  id=self.create();before=len(FakeAPI.calls);self.manager.stop.set()
+  with self.assertRaises(CloudError):self.manager.apply(id)
+  self.assertEqual(len(FakeAPI.calls),before)
 
 class TransportTests(unittest.TestCase):
  def test_server_discovery_uses_documented_detail_addresses(self):

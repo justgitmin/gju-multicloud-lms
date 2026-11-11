@@ -68,3 +68,7 @@ ADMIN 전용입니다. 프로젝트/서버를 새로 만드는 기능이 아니�
 ## Floating IP recovery
 
 NHN floating IP labels reject hyphens. The allocator uses a stable 14-character uppercase alphanumeric label and stores allocation and attachment checkpoints separately. The existing-server IP-only action never creates or rekeys a VM, enables services, or creates containers/RDS. It reconciles saved IDs/labels/attached ports before allocation and verifies the final ACTIVE port association. Only a recorded legacy `/floatingips HTTP 400` may reset the old invalid-label request intent; unknown/timeout intents never cause a second allocation. Lost successful responses reconcile the existing labeled IP.
+
+## Bounded parallel storage and RDS preparation
+
+Object Storage/RDS apply processes at most three students concurrently. Each student owns a deep-copied state and a dedicated API client, keeping credentials/token caches and requests separate. Every mutation checkpoint merges only that student into the latest encrypted batch state under a SQLite BEGIN IMMEDIATE transaction. The encryption/write lock does not cover cloud calls or DB readiness waits. READY students are skipped on retry; pending students do not begin cloud work after shutdown. Server creation and IP repair remain unchanged. Deploy only after existing jobs have ended; an already-running process continues its current execution mode.
