@@ -1,0 +1,32 @@
+name: Cloud Ops validation
+on:
+  pull_request:
+    paths: ['ops-platform/**', 'infra/aws-lab/lab.py', '.github/workflows/cloud-ops.yml']
+  push:
+    branches: [main]
+    paths: ['ops-platform/**', 'infra/aws-lab/lab.py', '.github/workflows/cloud-ops.yml']
+permissions:
+  contents: read
+jobs:
+  platform:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: ops-platform/requirements.txt
+      - run: pip install -r ops-platform/requirements.txt
+      - run: PYTHONPATH=ops-platform python -m unittest discover -s ops-platform/tests -v
+      - run: python -m unittest discover -s infra/aws-lab -p 'test_*.py' -v
+      - run: cp ops-platform/.env.example ops-platform/.env
+      - run: docker compose -f ops-platform/compose.yaml --env-file ops-platform/.env.example config --quiet
+      - run: docker build -f ops-platform/Dockerfile -t tbit-cloud-ops:test .
+      - run: docker run --rm --entrypoint aws tbit-cloud-ops:test --version
+      - run: >-
+          docker run --rm --read-only --tmpfs /tmp:mode=1777 --volume /data
+          --cap-drop ALL --security-opt no-new-privileges:true --entrypoint python
+          tbit-cloud-ops:test -c
+          "import base64,secrets; from cloudops.app import create_app; create_app({'OPS_ORIGIN':'https://ops.example.com','OPS_MASTER_KEY':base64.b64encode(secrets.token_bytes(32)).decode()}); print('APP_CONFIG_OK')"

@@ -1,0 +1,6 @@
+# Add a separate host block to the EXISTING reverse proxy configuration.
+# Replace the example with the domain whose DNS points at this server.
+ops.example.com {
+    encode zstd gzip
+    reverse_proxy tbit-cloud-ops-ops-1:8780
+}
