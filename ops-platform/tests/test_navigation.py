@@ -1,4 +1,4 @@
-import unittest
+import unittest,json,time
 from html.parser import HTMLParser
 import test_nhn_batch as fixture
 class Structure(HTMLParser):
@@ -13,6 +13,7 @@ class NavigationTests(unittest.TestCase):
  setUp=fixture.BatchTests.setUp
  tearDown=fixture.BatchTests.tearDown
  post=fixture.BatchTests.post
+ create=fixture.BatchTests.create
  def test_views_and_vendor_panels_are_separate_and_old_targets_survive(self):
   page=self.client.get('/').text;s=Structure();s.feed(page)
   views=[d['data-view'] for _,d,_ in s.elements if 'data-view' in d]
@@ -37,4 +38,10 @@ class NavigationTests(unittest.TestCase):
  def test_mutations_return_to_their_own_section(self):
   r=self.post('/events',{'name':'Another class','ends':'2026-12-01'});self.assertEqual(r.headers['location'],'/#events')
   r=self.post('/users',{'name':'Observer','email':'observer@example.com','password':'A-long-test-password!','role':'VIEWER'});self.assertEqual(r.headers['location'],'/#users')
+ def test_saved_roster_names_survive_storage_plan_summary_replacement(self):
+  id=self.create(True)
+  self.db.execute('INSERT INTO nhn_bootstrap(batch_id,config,updated) VALUES(?,?,?)',(id,json.dumps({'roster':{'s01':{'name':'Student One','email':'one@example.com'},'s02':{'name':'Student Two','email':'two@example.com'}}}),time.time()))
+  self.manager.apply(id)
+  page=self.client.get('/').text
+  self.assertIn('s01 Student One',page);self.assertIn('s02 Student Two',page)
 if __name__=='__main__':unittest.main()
