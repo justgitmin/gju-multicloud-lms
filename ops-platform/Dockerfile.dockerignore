@@ -1,0 +1,14 @@
+.git
+**/node_modules
+**/.next
+**/.env*
+**/__pycache__
+**/.venv
+**/.preview
+**/data
+**/backups
+**/media
+**/.lab-state
+**/.nhn-lab-state
+infra/aws-lab/config.local.json
+infra/aws-lab/config.*.local.json
