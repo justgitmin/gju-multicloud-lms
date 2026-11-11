@@ -289,6 +289,24 @@ def create_app(settings=None,start_worker=True):
    config=json.loads(b['config']);config['connection_revision']=c['revision']
    db.execute('UPDATE nhn_batches SET secret=?,config=? WHERE id=?',(vault.seal(secret,'nhn-batch:'+id),json.dumps(config),id))
   store.audit(actor['email'],'NHN_BATCH_CREDENTIAL_UPDATE',id);return redirect('/#nhn-batch-'+id)
+ @app.post('/nhn/batches/{id}/students/archive')
+ async def nhn_students_archive(request:Request,id:str):
+  actor,d=await form(request,['ADMIN'])
+  if not verify_password(str(d.get('password','')),actor['password']):raise HTTPException(403,'Cloud Ops 관리자 비밀번호를 확인하세요.')
+  # One consistent snapshot; parallel provisioning keeps updating other students.
+  with store.connect() as db:
+   db.execute('BEGIN')
+   b=db.execute('SELECT state FROM nhn_batches WHERE id=?',(id,)).fetchone()
+   boot=db.execute('SELECT state FROM nhn_bootstrap WHERE batch_id=?',(id,)).fetchone()
+   rows=db.execute('SELECT student,status FROM nhn_items WHERE batch_id=?',(id,)).fetchall()
+  if not b:raise HTTPException(404,'NHN 계획을 찾을 수 없습니다.')
+  servers=vault.open(boot['state'],'nhn-servers:'+id).get('students',{}) if boot and boot['state'] else {}
+  batch=vault.open(b['state'],'nhn-state:'+id) if b['state'] else {}
+  from .student_bundles import build
+  content,manifest=build(servers,batch,{r['student']:r['status'] for r in rows})
+  if not any(x.get('included') for x in manifest):raise HTTPException(409,'내려받을 준비 완료 서버가 없습니다.')
+  store.audit(actor['email'],'NHN_STUDENT_ARCHIVE_DOWNLOAD',id)
+  return Response(content,media_type='application/zip',headers={'Content-Disposition':'attachment; filename="nhn-students-individual-zips.zip"'})
  @app.post('/nhn/batches/{id}/student')
  async def nhn_student_download(request:Request,id:str):
   actor,d=await form(request,['ADMIN']);b=store.one('SELECT * FROM nhn_batches WHERE id=?',(id,));student=str(d.get('student',''))
