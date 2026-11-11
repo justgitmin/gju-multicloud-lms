@@ -1,0 +1,31 @@
+name: tbit-cloud-ops
+services:
+  attendance:
+    build:
+      context: ..
+      dockerfile: ops-platform/attendance/Dockerfile
+    restart: unless-stopped
+    env_file: attendance.env
+    volumes: ["ops_data:/ops-data:ro"]
+    read_only: true
+    tmpfs: ["/tmp:size=32m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [ops_edge, lms_data]
+    mem_limit: 192m
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8781/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+volumes:
+  ops_data:
+    external: true
+    name: tbit-cloud-ops_ops_data
+networks:
+  ops_edge:
+    external: true
+    name: tbit_ops_edge
+  lms_data:
+    external: true
+    name: ${LMS_DOCKER_NETWORK:-gju-multicloud-lms_default}
