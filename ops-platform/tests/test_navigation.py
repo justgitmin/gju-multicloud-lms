@@ -44,4 +44,14 @@ class NavigationTests(unittest.TestCase):
   self.manager.apply(id)
   page=self.client.get('/').text
   self.assertIn('s01 Student One',page);self.assertIn('s02 Student Two',page)
+ def test_inventory_resolves_names_without_changing_assignments(self):
+  id=self.create(True)
+  self.db.execute('INSERT INTO nhn_bootstrap(batch_id,config,updated) VALUES(?,?,?)',(id,json.dumps({'roster':{'s01':{'name':'Student One'},'s02':{'name':'Student Two'}}}),time.time()))
+  self.manager.apply(id)
+  page=self.client.get('/').text;self.assertIn('<p>s01 · Student One</p>',page);self.assertIn('<p>s02 · Student Two</p>',page)
+  self.assertEqual(self.db.one("SELECT owner FROM resources WHERE owner='s01'")['owner'],'s01')
+  self.db.execute("UPDATE resources SET owner='Custom Team' WHERE owner='s01'")
+  page=self.client.get('/').text;self.assertIn('<p>Custom Team</p>',page);self.assertNotIn('<p>s01 · Student One</p>',page)
+  self.db.execute("UPDATE resources SET owner='s01 · Custom Team' WHERE owner='Custom Team'")
+  self.assertIn('<p>s01 · Custom Team</p>',self.client.get('/').text)
 if __name__=='__main__':unittest.main()

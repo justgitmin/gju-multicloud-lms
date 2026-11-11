@@ -82,6 +82,18 @@ def create_app(settings=None,start_worker=True):
  @app.get('/')
  def dashboard(request:Request):
   actor=user(request);connections=store.all('SELECT id,name,provider,region,account,writable,last_sync,error FROM connections ORDER BY name');resources=store.all('SELECT r.*,c.provider,c.name connection_name,e.name event_name FROM resources r JOIN connections c ON c.id=r.connection_id LEFT JOIN events e ON e.id=r.event_id ORDER BY r.missing,r.name')
+  # Resolve display names from a matching education and immutable server ID.
+  # Do not rewrite the stored assignment or replace manually entered team names.
+  labels={}
+  for entry in store.all('SELECT b.event_id,n.config,i.student,i.summary FROM nhn_batches b JOIN nhn_bootstrap n ON n.batch_id=b.id JOIN nhn_items i ON i.batch_id=b.id'):
+   person=json.loads(entry['config']).get('roster',{}).get(entry['student'],{});summary=json.loads(entry['summary']);remote=summary.get('server_id');name=person.get('name')
+   if remote and name:labels.setdefault((entry['event_id'],remote),set()).add((entry['student'],name))
+  for resource in resources:
+   matches=labels.get((resource['event_id'],resource['remote_id']),set()) if resource['provider']=='NHN' else set()
+   resource['owner_display']=resource['owner']
+   if len(matches)==1:
+    code,name=next(iter(matches))
+    if resource['owner']==code:resource['owner_display']=code+' · '+name
   context={'user':actor,'csrf':csrf(actor),'connections':connections,'resources':resources,'nhn_batches':[{**b,'options':json.loads(b['config']),'bootstrap':store.one('SELECT status FROM nhn_bootstrap WHERE batch_id=?',(b['id'],)),'people':json.loads((store.one('SELECT config FROM nhn_bootstrap WHERE batch_id=?',(b['id'],)) or {'config':'{}'})['config']).get('roster',{}),'items':[{**i,'details':json.loads(i['summary'])} for i in store.all('SELECT student,summary,status,message FROM nhn_items WHERE batch_id=? ORDER BY student',(b['id'],))]} for b in store.all('SELECT id,name,config,planned FROM nhn_batches ORDER BY created DESC')] if actor['role']=='ADMIN' else [],'events':store.all('SELECT * FROM events ORDER BY created DESC'),'environments':store.all('SELECT e.id,e.lab_id,e.connection_id,e.config,c.name connection_name FROM environments e JOIN connections c ON c.id=e.connection_id ORDER BY e.created DESC'),'jobs':store.all('SELECT j.id,j.kind,j.target,j.status,j.message,j.updated,u.email FROM jobs j JOIN users u ON u.id=j.actor ORDER BY created DESC LIMIT 50'),'audits':store.all('SELECT * FROM audits ORDER BY id DESC LIMIT 50') if actor['role']=='ADMIN' else [],'users':store.all('SELECT id,email,name,role,active FROM users ORDER BY id') if actor['role']=='ADMIN' else []}
   return templates.TemplateResponse(request=request,name='dashboard.html',context=context)
  @app.get('/api/overview')
