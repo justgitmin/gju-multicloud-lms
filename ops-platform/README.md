@@ -68,17 +68,19 @@ ops.tbitcloud.com {
 }
 ```
 
-루트 경로에서 아래 명령으로 Caddy만 운영 네트워크에 연결합니다. 먼저 위에서 ops 컨테이너가 실행되어 `tbit_ops_edge` 네트워크가 만들어져 있어야 합니다.
+루트 경로에서 아래 명령으로 실행 중인 Caddy를 운영 네트워크에 연결합니다. 기존 LMS 컨테이너를 재생성하지 않습니다. 먼저 ops 컨테이너가 실행되어 `tbit_ops_edge` 네트워크가 만들어져 있어야 합니다. 이미 네트워크에 연결한 경우 network connect는 생략하세요.
 
 ```bash
 cd ~/gju-multicloud-lms
 docker compose -f compose.yaml -f compose.prod.yaml -f ops-platform/lms-proxy.override.yaml config --quiet
-docker compose -f compose.yaml -f compose.prod.yaml -f ops-platform/lms-proxy.override.yaml up -d --no-deps caddy
+ops_caddy_id="$(docker compose -f compose.yaml -f compose.prod.yaml ps -q caddy)"
+test -n "$ops_caddy_id"
+docker network connect tbit_ops_edge "$ops_caddy_id"
 docker compose -f compose.yaml -f compose.prod.yaml -f ops-platform/lms-proxy.override.yaml exec caddy caddy validate --config /etc/caddy/Caddyfile
 docker compose -f compose.yaml -f compose.prod.yaml -f ops-platform/lms-proxy.override.yaml exec caddy caddy reload --config /etc/caddy/Caddyfile
 ```
 
-프록시 재생성에는 짧은 연결 영향이 있을 수 있습니다. 이후 Caddy를 다시 생성할 때도 override 파일을 함께 사용해야 네트워크 연결이 유지됩니다. LMS web/db는 그대로 유지합니다. 다른 프록시라면 해당 프록시를 `tbit_ops_edge` 네트워크에 연결하고 Host/Origin을 원래 HTTPS 주소대로 전달하세요. 기존 80/443 포트를 차지하는 새 프록시를 추가 실행하지 않습니다. ops의 8780 포트는 호스트 loopback에만 바인딩되어 인터넷에 직접 열리지 않습니다.
+위 절차는 기존 프록시에 네트워크를 추가하고 설정만 reload합니다. 이후 계획된 Caddy 재생성 시에는 override 파일을 함께 사용해야 네트워크 연결이 유지됩니다. LMS web/db는 그대로 유지합니다. 다른 프록시라면 해당 프록시를 `tbit_ops_edge` 네트워크에 연결하고 Host/Origin을 원래 HTTPS 주소대로 전달하세요. 기존 80/443 포트를 차지하는 새 프록시를 추가 실행하지 않습니다. ops의 8780 포트는 호스트 loopback에만 바인딩되어 인터넷에 직접 열리지 않습니다.
 
 ## 3. 연결 등록
 
