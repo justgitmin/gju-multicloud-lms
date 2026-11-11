@@ -24,6 +24,7 @@ def create_app(settings=None,start_worker=True):
   yield
   worker.stop.set()
  app=FastAPI(title='TBIT Cloud Ops',docs_url=None,redoc_url=None,openapi_url=None,lifespan=lifespan);app.state.store=store;app.state.vault=vault;app.state.worker=worker
+ dummy_hash=password_hash('dummy-not-a-user-'+secrets.token_hex(16))
  root=Path(__file__).parent;app.mount('/static',StaticFiles(directory=root/'static'),name='static');templates=Jinja2Templates(directory=root/'templates');templates.env.filters['kst']=lambda value:datetime.datetime.fromtimestamp(value,datetime.timezone(datetime.timedelta(hours=9))).strftime('%m/%d %H:%M:%S')
  def user(request,roles=None):
   token=request.cookies.get(COOKIE,'');row=store.one('SELECT u.*,s.csrf FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.expires>? AND u.active=1',(digest(token),time.time())) if re.fullmatch('[0-9a-f]{64}',token) else None
@@ -70,7 +71,7 @@ def create_app(settings=None,start_worker=True):
  async def login(request:Request):
   _,data=await form(request,anonymous=True);email=str(data.get('email','')).strip().lower();password=str(data.get('password',''))
   if not store.rate('login-global',300) or not store.rate('login:'+digest(email),10):raise HTTPException(429,'로그인 시도가 많습니다. 15분 후 다시 시도하세요.')
-  actor=store.one('SELECT * FROM users WHERE email=? AND active=1',(email,));encoded=actor['password'] if actor else password_hash('not-a-valid-login-'+secrets.token_hex(16))
+  actor=store.one('SELECT * FROM users WHERE email=? AND active=1',(email,));encoded=actor['password'] if actor else dummy_hash
   if not verify_password(password,encoded) or not actor:
    store.audit('anonymous','LOGIN',digest(email),'DENIED');return RedirectResponse('/login?error=1',303)
   token=secrets.token_hex(32);store.execute('INSERT INTO sessions VALUES(?,?,?,?)',(digest(token),actor['id'],secrets.token_hex(32),time.time()+8*3600));store.execute('DELETE FROM sessions WHERE expires<?',(time.time(),));store.audit(email,'LOGIN')
