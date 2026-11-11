@@ -21,6 +21,7 @@ jobs:
       - run: pip install -r ops-platform/requirements.txt
       - run: PYTHONPATH=ops-platform python -m unittest discover -s ops-platform/tests -v
       - run: python -m unittest discover -s infra/aws-lab -p 'test_*.py' -v
+      - run: cp ops-platform/.env.example ops-platform/.env
       - run: docker compose -f ops-platform/compose.yaml --env-file ops-platform/.env.example config --quiet
       - run: docker build -f ops-platform/Dockerfile -t tbit-cloud-ops:test .
       - run: docker run --rm --entrypoint aws tbit-cloud-ops:test --version
