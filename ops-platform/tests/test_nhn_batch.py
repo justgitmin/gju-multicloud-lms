@@ -111,6 +111,15 @@ class BatchTests(unittest.TestCase):
   self.create();self.db.execute("UPDATE users SET role='OPERATOR'");self.assertEqual(self.action('NHN_APPLY').status_code,403);self.assertEqual(self.post('/nhn/batches/'+self.b['id']+'/student',{}).status_code,403);self.assertNotIn('name="access_key"',self.client.get('/').text)
 
 class TransportTests(unittest.TestCase):
+ def test_catalog_requires_project_ui_type_and_handles_null_children(self):
+  with patch('cloudops.nhn_batch.httpx.Client'):
+   api=API({},'KR1');api.core=Mock(return_value={'productUiList':[{'productUiName':'Compute','children':[None,{'productUiName':'Instance','productId':'compute'}]},{'productUiName':'Object Storage','productId':'storage'},{'productUiName':'RDS for MySQL','productId':'rds'}]})
+   self.assertEqual(api.products(),{'instance':'compute','objectstorage':'storage','rdsformysql':'rds'});api.core.assert_called_once_with('/v1/product-uis/hierarchy?productUiType=PROJECT')
+ def test_safe_error_contains_result_code_and_stage_only(self):
+  with patch('cloudops.nhn_batch.httpx.Client'):
+   api=API({},'KR1');r=Mock(is_success=True,content=b'x');r.json.return_value={'header':{'isSuccessful':False,'resultCode':40001,'resultMessage':'SECRET raw error'}}
+   with self.assertRaises(CloudError) as e:api.response(r,'서비스 카탈로그 조회')
+   self.assertIn('40001',str(e.exception));self.assertIn('서비스 카탈로그',str(e.exception));self.assertNotIn('SECRET',str(e.exception))
  def test_storage_uses_separate_tenant_and_rejects_catalog_host(self):
   with patch('cloudops.nhn_batch.httpx.Client') as client:
    api=API({'username':'operator','api_password':'secret'},'KR1');response=Mock(is_success=True);response.json.return_value={'access':{'token':{'tenant':{'id':'b'*32},'id':'token'},'serviceCatalog':[{'type':'object-store','endpoints':[{'region':'KR1','publicURL':'https://attacker.example/v1/AUTH_'+'b'*32}]}]}};client.return_value.post.return_value=response
