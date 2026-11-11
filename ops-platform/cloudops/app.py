@@ -37,7 +37,7 @@ def create_app(settings=None,start_worker=True):
   if not expected or not secrets.compare_digest(str(data.get('csrf','')),expected):raise HTTPException(403,'화면을 새로고침하고 다시 시도하세요.')
   return actor,data
  def csrf(actor):return actor['csrf'] if actor else secrets.token_hex(32)
- def redirect():return RedirectResponse('/',303)
+ def redirect(target='/'):return RedirectResponse(target,303)
  def connection(id):
   c=store.one('SELECT * FROM connections WHERE id=?',(id,))
   if not c:raise HTTPException(404,'연결을 찾을 수 없습니다.')
@@ -106,7 +106,7 @@ def create_app(settings=None,start_worker=True):
    if not all(secret.values()):raise HTTPException(400,'NAVER API 키를 입력하세요.')
   else:raise HTTPException(400,'지원하지 않는 클라우드')
   if any(len(v)>4096 for v in secret.values()):raise HTTPException(400,'인증정보 입력이 너무 깁니다.')
-  store.execute('INSERT INTO connections(id,name,provider,region,account,secret,writable) VALUES(?,?,?,?,?,?,?)',(id,name,provider,region,account,vault.seal(secret,'connection:'+id),int(d.get('writable')=='on')));store.audit(actor['email'],'CONNECTION_CREATE',id);return redirect()
+  store.execute('INSERT INTO connections(id,name,provider,region,account,secret,writable) VALUES(?,?,?,?,?,?,?)',(id,name,provider,region,account,vault.seal(secret,'connection:'+id),int(d.get('writable')=='on')));store.audit(actor['email'],'CONNECTION_CREATE',id);return redirect(f'/?saved={id}#connection-{id}')
  @app.post('/connections/{id}/security')
  async def connection_security(request:Request,id:str):
   actor,d=await form(request,['ADMIN']);c=connection(id)
@@ -119,10 +119,10 @@ def create_app(settings=None,start_worker=True):
    encrypted=vault.seal(entered,'connection:'+id)
   else:encrypted=c['secret']
   if store.one("SELECT id FROM jobs WHERE connection_id=? AND status='RUNNING'",(id,)):raise HTTPException(409,'실행 중인 작업이 끝난 뒤 변경하세요.')
-  store.execute('UPDATE connections SET secret=?,writable=?,revision=revision+1 WHERE id=?',(encrypted,int(d.get('writable')=='on'),id));store.audit(actor['email'],'CONNECTION_SECURITY_UPDATE',id);return redirect()
+  store.execute('UPDATE connections SET secret=?,writable=?,revision=revision+1 WHERE id=?',(encrypted,int(d.get('writable')=='on'),id));store.audit(actor['email'],'CONNECTION_SECURITY_UPDATE',id);return redirect(f'/?saved={id}#connection-{id}')
  @app.post('/connections/{id}/sync')
  async def sync(request:Request,id:str):
-  actor,_=await form(request,['ADMIN','OPERATOR']);queue(actor,connection(id),'SYNC',id);return redirect()
+  actor,_=await form(request,['ADMIN','OPERATOR']);queue(actor,connection(id),'SYNC',id);return redirect(f'/#connection-{id}')
  @app.post('/events')
  async def add_event(request:Request):
   actor,d=await form(request,['ADMIN','OPERATOR']);name=str(d.get('name','')).strip();ends=str(d.get('ends',''))
