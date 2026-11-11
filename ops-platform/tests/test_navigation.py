@@ -52,4 +52,6 @@ class NavigationTests(unittest.TestCase):
   self.assertEqual(self.db.one("SELECT owner FROM resources WHERE owner='s01'")['owner'],'s01')
   self.db.execute("UPDATE resources SET owner='Custom Team' WHERE owner='s01'")
   page=self.client.get('/').text;self.assertIn('<p>Custom Team</p>',page);self.assertNotIn('<p>s01 · Student One</p>',page)
+  self.db.execute("UPDATE resources SET owner='s01 · Custom Team' WHERE owner='Custom Team'")
+  self.assertIn('<p>s01 · Custom Team</p>',self.client.get('/').text)
 if __name__=='__main__':unittest.main()
