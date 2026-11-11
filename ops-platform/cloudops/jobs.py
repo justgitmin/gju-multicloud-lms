@@ -62,13 +62,22 @@ class Worker:
    user=self.store.one('SELECT * FROM users WHERE id=?',(job['actor'],));c=self.store.one('SELECT * FROM connections WHERE id=?',(job['connection_id'],))
    required=['ADMIN','OPERATOR'] if job['kind'] in ['SYNC','START','STOP'] else ['ADMIN']
    if not user or not user['active'] or user['role'] not in required or not c or c['revision']!=job['revision']:raise providers.CloudError('권한 또는 연결 설정 변경으로 작업을 중단했습니다.')
-   if job['kind']!='SYNC' and not c['writable']:raise providers.CloudError('연결의 변경 권한이 비활성화되어 있습니다.')
+   if job['kind'] not in ['SYNC','NHN_PLAN'] and not c['writable']:raise providers.CloudError('연결의 변경 권한이 비활성화되어 있습니다.')
    secret=self.vault.open(c['secret'],'connection:'+c['id'])
    if job['kind']=='SYNC':self.sync(c,secret);message='동기화 완료'
    elif job['kind'] in ['START','STOP']:
     r=self.store.one('SELECT * FROM resources WHERE id=?',(job['target'],))
     if not r or r['connection_id']!=c['id'] or r['missing'] or not r['event_id']:raise providers.CloudError('교육에 배정된 현재 자원만 제어할 수 있습니다.')
     providers.adapter(c,secret).action(r['remote_id'],job['kind'].lower());message='요청 접수 완료 · 실제 상태는 다음 동기화에서 확인'
+   elif job['kind'] in ['NHN_PLAN','NHN_ENABLE','NHN_APPLY','NHN_CLEANUP']:
+    from .nhn_batch import Batch
+    batch=self.store.one('SELECT connection_id FROM nhn_batches WHERE id=?',(job['target'],))
+    if not batch or batch['connection_id']!=c['id'] or c['provider']!='NHN':raise providers.CloudError('NHN 일괄 작업 연결 불일치')
+    manager=Batch(self.store,self.vault,self.stop)
+    if job['kind']=='NHN_PLAN':manager.plan(job['target']);message='NHN 생성 계획 조회 완료 · 클라우드 자원 변경 없음'
+    elif job['kind']=='NHN_ENABLE':manager.enable(job['target']);message='NHN 서비스 일괄 활성화 완료 · 계획 다시 조회를 누르세요.'
+    elif job['kind']=='NHN_APPLY':manager.apply(job['target']);message='NHN 프로젝트 일괄 준비 완료'
+    else:manager.cleanup(job['target']);message='NHN 소유 자원 정리 완료 · 기존 서버는 유지'
    elif job['kind'] in ['PROVISION','DESTROY']:self.aws_lab(c,secret,job);message='AWS 템플릿 작업 완료 · 동기화로 확인하세요.'
    else:raise providers.CloudError('지원하지 않는 작업')
    status='SUCCEEDED'

@@ -1,0 +1,36 @@
+<section id="nhn-batches">
+ <div class="section-heading"><div><p class="eyebrow">NHN TRAINING BATCH</p><h2>NHN 학생 환경 일괄 준비</h2></div></div>
+ <aside>기존 학생 프로젝트·웹 서버를 재사용합니다. 운영자 키로 서비스 정보를 자동 조회하고 비공개 컨테이너와 선택한 사설 RDS를 준비합니다. RDS는 학생별 1대·SSD 20GB·고가용성 없음으로 과금됩니다. 서비스가 비활성화되었거나 권한이 없으면 계획에서 차단합니다. 미활성 서비스는 아래에서 일괄 활성화한 뒤 계획을 다시 조회할 수 있습니다. IAM 권한·SSH 키·서버 설정은 변경하지 않습니다.</aside>
+ <details><summary>새 일괄 계획 조회 · 아직 생성하지 않음</summary>
+ <form method="post" action="/nhn/batches" class="form-grid">{{ token() }}
+  <label>작업 이름<input name="name" required maxlength="80" placeholder="광주대 NHN 01-10"></label>
+  <label>교육<select name="event_id" required>{% for e in events %}<option value="{{ e.id }}">{{ e.name }}</option>{% endfor %}</select></label>
+  <label>인증정보를 재사용할 NHN 연결<select name="connection_id" required>{% for c in connections if c.provider=='NHN' %}<option value="{{ c.id }}">{{ c.name }} · {{ c.region }}</option>{% endfor %}</select><small>저장된 API 사용자·비밀번호를 사용합니다.</small></label>
+  <label>조직 ID<input name="org" required placeholder="8NQqYpYUnlEnixaG"></label>
+  <label>프로젝트 접두사<input name="project_prefix" required value="TBIT_Edu01_Pro"></label>
+  <label>서버 접두사<input name="server_prefix" required value="gju-nhn-s"><small>01이면 gju-nhn-s01-web을 찾습니다.</small></label>
+  <label>시작 번호<input type="number" name="first" min="1" max="30" value="1" required></label>
+  <label>끝 번호<input type="number" name="last" min="1" max="30" value="10" required></label>
+  <label>생성 자원 접두사<input name="lab_prefix" required value="gju-nhn" maxlength="25"></label>
+  <label>운영자 User Access Key<input type="password" name="access_key" required autocomplete="off"></label>
+  <label>운영자 Secret Access Key<input type="password" name="secret_key" required autocomplete="new-password"><small>역할 일괄 변경 때 사용한 운영자 키입니다. API 비밀번호와 다릅니다. 서버에서 암호화 보관합니다.</small></label>
+  <label class="check"><input type="checkbox" name="db">학생별 사설 RDS도 생성 (추가 과금)</label>
+  <label>RDS 사양 이름<input name="db_flavor" placeholder="비워두면 최소 vCPU·메모리 사양 선택"></label>
+  <label>DB 버전 API 코드<input name="db_version" placeholder="비워두면 목록의 MySQL 8.0 최신 버전 선택"><small>계획에 실제 선택 사양·버전이 표시됩니다. 지원하지 않는 값은 차단됩니다.</small></label>
+  <button>대상 조회·계획 만들기</button>
+ </form></details>
+ {% for b in nhn_batches %}
+ <article class="card" id="nhn-batch-{{ b.id }}"><h3>{{ b.name }}</h3>
+ <p>{{ b.options.project_prefix }}{{ '%02d'|format(b.options.first) }} ~ {{ '%02d'|format(b.options.last) }} · {{ b.options.region }} · {{ '학생별 RDS 포함 / 20GB씩' if b.options.db else '비공개 컨테이너만 준비' }}</p>
+ <p>기존 웹 서버·네트워크 유지. DB 사설 접속만 허용. 생성 요청과 사용 가능 상태 확인은 작업 기록에서 구분합니다.</p>
+ <div class="table-wrap"><table><thead><tr><th>학생 / 프로젝트</th><th>기존 서버</th><th>생성 대상</th><th>상태·결과</th></tr></thead><tbody>
+ {% for i in b['items'] %}<tr><td>{{ i.student }}<small>{{ i.details.project }}</small></td><td>{{ i.details.server_name }}<small>{{ i.details.ip or '미확인' }}</small></td><td>{{ i.details.container }}<small>{{ i.details.container_action }}</small>{% if i.details.db %}<small>{{ i.details.db_name }} · {{ i.details.db_flavor or b.options.db_flavor }} · {{ i.details.db_version or b.options.db_version }} · SSD 20GB</small>{% endif %}</td><td><b>{{ i.status }}</b><small>{{ i.message }}</small></td></tr>{% else %}<tr><td colspan="4">계획 조회 대기 · 작업 기록을 확인한 뒤 새로고침하세요.</td></tr>{% endfor %}
+ </tbody></table></div>
+ <form method="post" action="/nhn/batches/{{ b.id }}/action">{{ token() }}<button class="secondary" name="kind" value="NHN_PLAN">계획 다시 조회</button></form>
+ <details><summary>계획 실행 · 실패 항목 재시도 · 생성 자원 정리</summary>
+ <p>생성은 자원별 과금이 발생합니다. 정리는 이 계획이 생성한 RDS·보안 그룹·파라미터 그룹·빈 컨테이너만 대상으로 하며, RDS 데이터는 삭제됩니다. 학생 파일이 남은 컨테이너는 보존하고 확인 필요로 표시합니다. 기존 서버는 정리 대상이 아닙니다.</p>
+ <form method="post" action="/nhn/batches/{{ b.id }}/action">{{ token() }}<label>작업 이름 확인<input name="confirm" required placeholder="{{ b.name }}" autocomplete="off"></label><label>Cloud Ops 관리자 비밀번호<input name="password" type="password" required autocomplete="current-password"></label><button class="secondary" name="kind" value="NHN_ENABLE">Object Storage·선택 RDS 서비스 일괄 활성화</button> <button name="kind" value="NHN_APPLY">일괄 생성 · 실패 항목 재시도</button> <button class="danger" name="kind" value="NHN_CLEANUP">생성 자원 정리</button></form></details>
+ <details><summary>학생 1명 접속 안내 내려받기</summary><form method="post" action="/nhn/batches/{{ b.id }}/student">{{ token() }}<label>학생 코드<input name="student" placeholder="s01" required></label><label>Cloud Ops 관리자 비밀번호<input name="password" type="password" required autocomplete="current-password"></label><button class="secondary">개별 안내 JSON 다운로드</button></form><p>준비 완료한 학생만 내려받을 수 있습니다. 운영자 API 키는 포함하지 않습니다. 기존 IAM 로그인과 PEM 키는 별도 개별 안내를 사용합니다.</p></details>
+ <details><summary>운영자 키 갱신 · 현재 연결의 API 비밀번호 반영</summary><form method="post" action="/nhn/batches/{{ b.id }}/credentials">{{ token() }}<label>새 User Access Key<input name="access_key" type="password" autocomplete="off"></label><label>새 Secret Access Key<input name="secret_key" type="password" autocomplete="new-password"></label><p>두 키를 비우면 저장된 키를 유지하고 현재 NHN 연결의 API 사용자·비밀번호만 반영합니다.</p><label>Cloud Ops 관리자 비밀번호<input name="password" type="password" required autocomplete="current-password"></label><button class="secondary">인증정보 갱신</button></form></details>
+ </article>{% endfor %}
+</section>

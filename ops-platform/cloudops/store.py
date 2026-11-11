@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS resources(id TEXT PRIMARY KEY,connection_id TEXT NOT 
 CREATE TABLE IF NOT EXISTS environments(id TEXT PRIMARY KEY,connection_id TEXT NOT NULL REFERENCES connections(id),event_id TEXT NOT NULL REFERENCES events(id),lab_id TEXT NOT NULL UNIQUE,config TEXT NOT NULL,state TEXT NOT NULL DEFAULT '',created REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY,actor INTEGER NOT NULL REFERENCES users(id),connection_id TEXT REFERENCES connections(id),revision INTEGER,kind TEXT NOT NULL,target TEXT NOT NULL,payload TEXT NOT NULL,status TEXT NOT NULL,created REAL NOT NULL,updated REAL NOT NULL,message TEXT NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS one_active_job_per_connection ON jobs(connection_id) WHERE status IN ('QUEUED','RUNNING');
+CREATE TABLE IF NOT EXISTS nhn_batches(id TEXT PRIMARY KEY,connection_id TEXT NOT NULL REFERENCES connections(id),event_id TEXT NOT NULL REFERENCES events(id),name TEXT NOT NULL,config TEXT NOT NULL,secret TEXT NOT NULL,state TEXT NOT NULL DEFAULT '',planned REAL,created REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS nhn_items(batch_id TEXT NOT NULL REFERENCES nhn_batches(id),student TEXT NOT NULL,summary TEXT NOT NULL,status TEXT NOT NULL,message TEXT NOT NULL,updated REAL NOT NULL,PRIMARY KEY(batch_id,student));
+CREATE UNIQUE INDEX IF NOT EXISTS one_nhn_batch_scope ON nhn_batches(connection_id,name);
 CREATE TABLE IF NOT EXISTS audits(id INTEGER PRIMARY KEY,actor TEXT NOT NULL,event TEXT NOT NULL,target TEXT NOT NULL,result TEXT NOT NULL,created REAL NOT NULL);
 '''
 class Store:
