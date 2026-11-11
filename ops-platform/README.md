@@ -129,3 +129,5 @@ PYTHONPATH=ops-platform python -m unittest discover -s ops-platform/tests -v
 ```
 
 - 공식 API 참고: [AWS 템플릿](../infra/aws-lab/README.md), [NHN Instance](https://docs.nhncloud.com/ko/Compute/Instance/ko/public-api/), [NHN IaaS 인증](https://docs.nhncloud.com/ko/nhncloud/ko/public-api/iaas-token/), [NAVER VPC 서버](https://api.ncloud-docs.com/docs/compute-vserver-getserverinstancelist), [NAVER 서명](https://api.ncloud-docs.com/docs/common-ncpapi).
+
+실패한 다중 학생 생성·삭제의 자동 복구는 제공하지 않습니다. 생성 기록을 덮어쓰거나 같은 환경을 무작정 재생성하지 말고 CloudFormation 상태를 먼저 확인하세요. 현재 웹 화면은 일부 학생만 재시도하는 기능을 제공하지 않습니다.
