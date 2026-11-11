@@ -1,0 +1,26 @@
+name: Cloud Ops validation
+on:
+  pull_request:
+    paths: ['ops-platform/**', 'infra/aws-lab/lab.py', '.github/workflows/cloud-ops.yml']
+  push:
+    branches: [main]
+    paths: ['ops-platform/**', 'infra/aws-lab/lab.py', '.github/workflows/cloud-ops.yml']
+permissions:
+  contents: read
+jobs:
+  platform:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: ops-platform/requirements.txt
+      - run: pip install -r ops-platform/requirements.txt
+      - run: PYTHONPATH=ops-platform python -m unittest discover -s ops-platform/tests -v
+      - run: python -m unittest discover -s infra/aws-lab -p 'test_*.py' -v
+      - run: docker compose -f ops-platform/compose.yaml --env-file ops-platform/.env.example config --quiet
+      - run: docker build -f ops-platform/Dockerfile -t tbit-cloud-ops:test .
+      - run: docker run --rm --entrypoint aws tbit-cloud-ops:test --version
