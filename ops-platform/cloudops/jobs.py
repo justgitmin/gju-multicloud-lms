@@ -41,7 +41,7 @@ class Worker:
    def durable_save(path,value):original_save(path,value);checkpoint()
    def cli(config,*args):
     # Commit encrypted state BEFORE cloud requests, including credentials creation.
-    checkpoint();remaining=deadline-time.monotonic()
+    checkpoint();self.store.execute('UPDATE jobs SET message=?,updated=? WHERE id=?',('AWS '+str(args[0])+' '+str(args[1])+' 진행 중',time.time(),job['id']));remaining=deadline-time.monotonic()
     if remaining<=0:raise providers.CloudError('작업 시간 제한 초과: 클라우드 상태를 확인하세요.')
     result=subprocess.run(['aws','--region',config['region'],'--output','json','--no-cli-pager',*args],env=process_env,capture_output=True,text=True,timeout=remaining)
     if result.returncode:raise providers.CloudError('AWS 명령 실패: 계정·권한·CloudFormation 이벤트를 확인하세요. 원문 응답은 저장하지 않습니다.')
