@@ -169,3 +169,6 @@ infra/aws-lab/config.*.local.json
 
 # NHN operator role snapshots (no API credentials)
 .nhn-lab-state/
+
+# Attendance read-only database credentials
+ops-platform/attendance.env
