@@ -6,7 +6,9 @@ services:
       dockerfile: ops-platform/attendance/Dockerfile
     restart: unless-stopped
     env_file: attendance.env
-    volumes: ["ops_data:/ops-data:ro"]
+    # SQLite WAL readers may need to create shared-memory coordination files.
+    # The application opens ops.sqlite3 with mode=ro and only executes SELECT.
+    volumes: ["ops_data:/ops-data"]
     read_only: true
     tmpfs: ["/tmp:size=32m"]
     cap_drop: [ALL]
