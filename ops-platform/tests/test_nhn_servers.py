@@ -106,6 +106,10 @@ class ServerTests(unittest.TestCase):
   self.assertEqual(len(rules),4)
   self.assertTrue(all('protocol' not in r and 'port_range_min' not in r for r in rules))
   self.assertEqual({r['remote_ip_prefix'] for r in rules},{'0.0.0.0/0','::/0'})
+ def test_narrow_existing_rule_does_not_satisfy_all_ports(self):
+  self.prepare();infra=Infra(ServerAPI({},'KR1'),{'projectId':'project01'});infra.cloud['/security-groups']=[{'id':'sg','name':'lab'}];infra.cloud['/security-group-rules']=[{'direction':'ingress','ethertype':'IPv4','protocol':'tcp','port_range_min':80,'port_range_max':80,'remote_ip_prefix':'0.0.0.0/0'}]
+  self.servers.ensure_rules(infra,{'id':'sg'},[{'direction':'ingress','ethertype':'IPv4','remote_ip_prefix':'0.0.0.0/0'}],{},lambda:None,'test')
+  self.assertEqual(len(infra.cloud['/security-group-rules']),2)
  def test_more_than_ten_requires_second_org(self):
   self.create();r=self.post('/nhn/batches/'+self.b['id']+'/servers/plan',{'last':'14','roster':''});self.assertEqual(r.status_code,400)
  def test_key_material_is_parseable_and_private(self):

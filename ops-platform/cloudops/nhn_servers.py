@@ -194,7 +194,7 @@ class Servers:
     if not normalized.get('remote_ip_prefix'):normalized['remote_ip_prefix']='::/0' if normalized.get('ethertype')=='IPv6' else '0.0.0.0/0'
     expected=dict(rule)
     if not expected.get('remote_ip_prefix'):expected['remote_ip_prefix']='::/0' if expected.get('ethertype')=='IPv6' else '0.0.0.0/0'
-    return all(normalized.get(k)==v for k,v in expected.items())
+    return all(normalized.get(k)==expected.get(k) for k in ['direction','ethertype','protocol','port_range_min','port_range_max','remote_ip_prefix'])
    if any(same(r) for r in actual):continue
    key='rule'+str(index)
    if key in j:raise CloudError('보안 규칙 생성 결과 확인 필요')
