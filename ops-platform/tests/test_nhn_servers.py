@@ -69,7 +69,7 @@ class ServerTests(unittest.TestCase):
   self.tmpl=patch('cloudops.nhn_servers.Servers.template',side_effect=lambda api,b,cfg:(template,api.projects(cfg['org']),api.products()));self.tmpl.start();self.addCleanup(self.tmpl.stop)
   self.app.state.worker.run_one();self.servers=Servers(self.db,self.vault,self.app.state.worker.stop)
  def test_server_plan_creates_no_cloud_resources(self):
-  self.prepare();self.assertFalse(Infra.clouds);self.assertEqual(self.db.one('SELECT status FROM nhn_bootstrap')['status'],'PLANNED');self.assertEqual(self.db.one('SELECT COUNT(*) n FROM nhn_items')['n'],2)
+  self.prepare();self.assertTrue(all(not cloud for cloud in Infra.clouds.values()));self.assertEqual(self.db.one('SELECT status FROM nhn_bootstrap')['status'],'PLANNED');self.assertEqual(self.db.one('SELECT COUNT(*) n FROM nhn_items')['n'],2)
  def test_create_and_retry_do_not_duplicate_servers(self):
   self.prepare();self.servers.apply(self.b['id']);self.assertEqual(sum(len(x.get('servers',[])) for x in Infra.clouds.values()),2);self.servers.apply(self.b['id']);self.assertEqual(sum(len(x.get('servers',[])) for x in Infra.clouds.values()),2);self.assertEqual(self.db.one('SELECT COUNT(*) n FROM resources')['n'],2)
  def test_key_and_write_intent_durable_before_server_request(self):
