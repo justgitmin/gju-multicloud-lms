@@ -20,7 +20,11 @@ class Worker:
  def aws_lab(self,c,secret,job):
   env=self.store.one('SELECT * FROM environments WHERE id=?',(job['target'],))
   if not env or env['connection_id']!=c['id'] or c['provider']!='AWS':raise providers.CloudError('환경 연결 불일치')
-  config=json.loads(env['config']);action={'PROVISION':'apply','DESTROY':'destroy'}[job['kind']]
+  config=json.loads(env['config']);selected=json.loads(job.get('payload','{}')).get('students')
+  if selected is not None:
+   if not isinstance(selected,list) or not selected or len(selected)!=len(set(selected)) or any(code not in config['students'] for code in selected):raise providers.CloudError('AWS 선택 학생이 계획과 일치하지 않습니다.')
+   config['students']=selected
+  action={'PROVISION':'apply','DESTROY':'destroy','AWS_CHECK':'check'}[job['kind']]
   aws=providers.AWS(c,secret);aws.identity()
   with tempfile.TemporaryDirectory(prefix='ops-lab-') as folder:
    root=Path(folder);state=root/'state';state.mkdir(mode=0o700);cfg=root/'config.json';cfg.write_text(json.dumps(config));cfg.chmod(0o600)
@@ -50,7 +54,14 @@ class Worker:
    try:
     validated=lab.load_config(cfg,deployment=action=='apply')
     if action=='apply':lab.deploy(validated,state)
+    elif action=='check':
+     validated['students']=[code for code in validated['students'] if not (state/(validated['lab_id']+'-'+code)).exists()]
+     lab.preflight(validated)
     else:lab.destroy(validated)
+   except Exception as error:
+    capacity_type=getattr(lab,'CapacityError',None)
+    if isinstance(capacity_type,type) and isinstance(error,capacity_type):raise providers.CloudError(str(error)) from None
+    raise
    finally:checkpoint()
 
  def run_one(self):
@@ -63,7 +74,7 @@ class Worker:
    required=['ADMIN','OPERATOR'] if job['kind'] in ['SYNC','START','STOP','RESOURCE_REFRESH','RESOURCE_ACTION'] else ['ADMIN']
    if job['kind']=='RESOURCE_ACTION' and json.loads(job['payload']).get('action')=='DELETE':required=['ADMIN']
    if not user or not user['active'] or user['role'] not in required or not c or c['revision']!=job['revision']:raise providers.CloudError('권한 또는 연결 설정 변경으로 작업을 중단했습니다.')
-   if job['kind'] not in ['SYNC','NHN_PLAN','NHN_SERVER_PLAN','NHN_IAM_PLAN','RESOURCE_REFRESH'] and not c['writable']:raise providers.CloudError('연결의 변경 권한이 비활성화되어 있습니다.')
+   if job['kind'] not in ['SYNC','NHN_PLAN','NHN_SERVER_PLAN','NHN_IAM_PLAN','RESOURCE_REFRESH','AWS_CHECK'] and not c['writable']:raise providers.CloudError('연결의 변경 권한이 비활성화되어 있습니다.')
    secret=self.vault.open(c['secret'],'connection:'+c['id'])
    if job['kind']=='SYNC':self.sync(c,secret);message='동기화 완료'
    elif job['kind'] in ['START','STOP']:
@@ -137,7 +148,8 @@ class Worker:
     elif job['kind']=='NHN_ENABLE':manager.enable(job['target']);message='NHN 서비스 일괄 활성화 완료 · 계획 다시 조회를 누르세요.'
     elif job['kind']=='NHN_APPLY':manager.apply(job['target']);message='NHN 프로젝트 일괄 준비 완료'
     else:manager.cleanup(job['target']);message='NHN 소유 자원 정리 완료 · 기존 서버는 유지'
-   elif job['kind'] in ['PROVISION','DESTROY']:self.aws_lab(c,secret,job);message='AWS 템플릿 작업 완료 · 동기화로 확인하세요.'
+   elif job['kind'] in ['PROVISION','DESTROY','AWS_CHECK']:
+    self.aws_lab(c,secret,job);message='AWS 사전 점검 통과 · VPC·EC2 vCPU·RDS 한도·MySQL 사양 확인 (생성 없음)' if job['kind']=='AWS_CHECK' else 'AWS 템플릿 작업 완료 · 동기화로 확인하세요.'
    else:raise providers.CloudError('지원하지 않는 작업')
    status='SUCCEEDED'
   except Exception as error:

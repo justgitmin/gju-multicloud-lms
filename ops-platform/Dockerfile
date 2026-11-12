@@ -7,6 +7,7 @@ WORKDIR /app
 COPY ops-platform/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY ops-platform/cloudops ./cloudops
+COPY examples/demo-app ./examples/demo-app
 COPY ops-platform/backup.py ./backup.py
 COPY infra/aws-lab/lab.py /infra/aws-lab/lab.py
 USER ops

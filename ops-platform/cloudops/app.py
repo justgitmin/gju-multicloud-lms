@@ -26,7 +26,7 @@ def create_app(settings=None,start_worker=True):
  app=FastAPI(title='TBIT Cloud Ops',docs_url=None,redoc_url=None,openapi_url=None,lifespan=lifespan);app.state.store=store;app.state.vault=vault;app.state.worker=worker
  dummy_hash=password_hash('dummy-not-a-user-'+secrets.token_hex(16))
  root=Path(__file__).parent;app.mount('/static',StaticFiles(directory=root/'static'),name='static');templates=Jinja2Templates(directory=root/'templates');templates.env.filters['kst']=lambda value:datetime.datetime.fromtimestamp(value,datetime.timezone(datetime.timedelta(hours=9))).strftime('%m/%d %H:%M:%S')
- templates.env.filters['job_label']=lambda kind:{'SYNC':'서버 상태 동기화','START':'서버 시작','STOP':'서버 일시 중지','RESOURCE_REFRESH':'자원 실제 상태 조회','RESOURCE_ACTION':'선택 자원 작업','PROVISION':'AWS 교육 환경 생성','DESTROY':'AWS 교육 환경 삭제','NHN_PLAN':'NHN 생성 계획 조회','NHN_ENABLE':'NHN 서비스 활성화','NHN_APPLY':'NHN 저장소·DB 준비','NHN_CLEANUP':'NHN 생성 자원 정리','NHN_SERVER_PLAN':'NHN 서버 계획 조회','NHN_SERVERS':'NHN 학생 환경 준비','NHN_IPS':'NHN 공인 IP 연결','NHN_IAM_PLAN':'학생 IAM 권한 조회','NHN_IAM_APPLY':'학생 IAM 권한 적용'}.get(kind,kind)
+ templates.env.filters['job_label']=lambda kind:{'SYNC':'서버 상태 동기화','START':'서버 시작','STOP':'서버 일시 중지','RESOURCE_REFRESH':'자원 실제 상태 조회','RESOURCE_ACTION':'선택 자원 작업','AWS_CHECK':'AWS 생성 전 한도·사양 점검','PROVISION':'AWS 교육 환경 생성','DESTROY':'AWS 교육 환경 삭제','NHN_PLAN':'NHN 생성 계획 조회','NHN_ENABLE':'NHN 서비스 활성화','NHN_APPLY':'NHN 저장소·DB 준비','NHN_CLEANUP':'NHN 생성 자원 정리','NHN_SERVER_PLAN':'NHN 서버 계획 조회','NHN_SERVERS':'NHN 학생 환경 준비','NHN_IPS':'NHN 공인 IP 연결','NHN_IAM_PLAN':'학생 IAM 권한 조회','NHN_IAM_APPLY':'학생 IAM 권한 적용'}.get(kind,kind)
  def user(request,roles=None):
   token=request.cookies.get(COOKIE,'');row=store.one('SELECT u.*,s.csrf FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.expires>? AND u.active=1',(digest(token),time.time())) if re.fullmatch('[0-9a-f]{64}',token) else None
   if not row:raise HTTPException(401,'로그인이 필요합니다.')
@@ -98,7 +98,11 @@ def create_app(settings=None,start_worker=True):
    if len(matches)==1:
     code,name=next(iter(matches))
     if resource['owner']==code:resource['owner_display']=code+' · '+name
-  context={'user':actor,'csrf':csrf(actor),'connections':connections,'resources':resources,'nhn_batches':[{**b,'options':json.loads(b['config']),'bootstrap':store.one('SELECT status FROM nhn_bootstrap WHERE batch_id=?',(b['id'],)),'iam':store.one('SELECT config,status,state,updated FROM nhn_iam WHERE batch_id=?',(b['id'],)),'people':json.loads((store.one('SELECT config FROM nhn_bootstrap WHERE batch_id=?',(b['id'],)) or {'config':'{}'})['config']).get('roster',{}),'items':[{**i,'details':json.loads(i['summary'])} for i in store.all('SELECT student,summary,status,message FROM nhn_items WHERE batch_id=? ORDER BY student',(b['id'],))]} for b in store.all('SELECT id,name,config,planned FROM nhn_batches ORDER BY created DESC')] if actor['role']=='ADMIN' else [],'events':store.all('SELECT * FROM events ORDER BY created DESC'),'environments':store.all('SELECT e.id,e.lab_id,e.connection_id,e.config,c.name connection_name FROM environments e JOIN connections c ON c.id=e.connection_id ORDER BY e.created DESC'),'jobs':store.all('SELECT j.id,j.kind,j.target,j.status,j.message,j.updated,u.email FROM jobs j JOIN users u ON u.id=j.actor ORDER BY created DESC LIMIT 50'),'audits':store.all('SELECT * FROM audits ORDER BY id DESC LIMIT 50') if actor['role']=='ADMIN' else [],'users':store.all('SELECT id,email,name,role,active FROM users ORDER BY id') if actor['role']=='ADMIN' else []}
+  context={'user':actor,'csrf':csrf(actor),'connections':connections,'resources':resources,'nhn_batches':[{**b,'options':json.loads(b['config']),'bootstrap':store.one('SELECT status FROM nhn_bootstrap WHERE batch_id=?',(b['id'],)),'iam':store.one('SELECT config,status,state,updated FROM nhn_iam WHERE batch_id=?',(b['id'],)),'people':json.loads((store.one('SELECT config FROM nhn_bootstrap WHERE batch_id=?',(b['id'],)) or {'config':'{}'})['config']).get('roster',{}),'items':[{**i,'details':json.loads(i['summary'])} for i in store.all('SELECT student,summary,status,message FROM nhn_items WHERE batch_id=? ORDER BY student',(b['id'],))]} for b in store.all('SELECT id,name,config,planned FROM nhn_batches ORDER BY created DESC')] if actor['role']=='ADMIN' else [],'events':store.all('SELECT * FROM events ORDER BY created DESC'),'environments':store.all('SELECT e.id,e.lab_id,e.connection_id,e.config,e.event_id,c.name connection_name FROM environments e JOIN connections c ON c.id=e.connection_id ORDER BY e.created DESC'),'jobs':store.all('SELECT j.id,j.kind,j.target,j.status,j.message,j.updated,u.email FROM jobs j JOIN users u ON u.id=j.actor ORDER BY created DESC LIMIT 50'),'audits':store.all('SELECT * FROM audits ORDER BY id DESC LIMIT 50') if actor['role']=='ADMIN' else [],'users':store.all('SELECT id,email,name,role,active FROM users ORDER BY id') if actor['role']=='ADMIN' else []}
+  for env in context['environments']:
+   env['options']=json.loads(env['config'])
+   from .aws_student_bundles import people
+   env['people']=people(store,env['event_id'])
   from .resource_ops import Resources,capabilities
   manager=Resources(store,vault,worker.stop);managed=[]
   for b in store.all('SELECT id FROM nhn_batches'):
@@ -259,23 +263,36 @@ def create_app(settings=None,start_worker=True):
  @app.post('/environments/{id}/action')
  async def environment_action(request:Request,id:str):
   actor,d=await form(request,['ADMIN']);e=store.one('SELECT * FROM environments WHERE id=?',(id,));kind=str(d.get('kind',''))
-  if not e or kind not in ['PROVISION','DESTROY']:raise HTTPException(400,'환경·작업 확인')
+  if not e or kind not in ['PROVISION','DESTROY','AWS_CHECK']:raise HTTPException(400,'환경·작업 확인')
   c=connection(e['connection_id'])
-  if not c['writable'] or d.get('confirm')!=e['lab_id'] or d.get('account')!=c['account']:raise HTTPException(400,'환경 이름·AWS 계정 ID 확인 문구와 변경 허용 설정이 필요합니다.')
-  if kind=='PROVISION' and e['state']:raise HTTPException(409,'생성 기록이 있는 환경입니다. 현재 상태를 확인하고 추가 학생은 새 환경 이름으로 준비하세요.')
-  queue(actor,c,kind,id);return redirect('/#jobs')
+  if kind!='AWS_CHECK' and (not c['writable'] or d.get('confirm')!=e['lab_id'] or d.get('account')!=c['account']):raise HTTPException(400,'환경 이름·AWS 계정 ID 확인 문구와 변경 허용 설정이 필요합니다.')
+  payload={}
+  if kind=='PROVISION':
+   config=json.loads(e['config']);selected=d.getlist('students') or config['students']
+   if not selected or len(selected)!=len(set(selected)) or any(code not in config['students'] for code in selected):raise HTTPException(400,'계획에 포함된 학생만 선택하세요.')
+   files=vault.open(e['state'],'state:'+id) if e['state'] else {}
+   if any(any(path.startswith(e['lab_id']+'-'+code+'/') for path in files) for code in selected):raise HTTPException(409,'선택 학생의 생성 기록이 있습니다. 기존 자료를 덮어쓰지 않습니다. 신규 학생만 선택하세요.')
+   payload={'students':selected}
+  queue(actor,c,kind,id,payload);return redirect('/#jobs')
  @app.post('/environments/{id}/student')
  async def student_download(request:Request,id:str):
   actor,d=await form(request,['ADMIN']);e=store.one('SELECT * FROM environments WHERE id=?',(id,));student=str(d.get('student',''))
   if not verify_password(str(d.get('password','')),actor['password']) or not e or not e['state'] or not re.fullmatch('s[0-9]{2}',student):raise HTTPException(403,'비밀번호·환경·학생을 확인하세요.')
-  prefix=e['lab_id']+'-'+student+'/'
-  files=vault.open(e['state'],'state:'+id);selected={k:v for k,v in files.items() if k.startswith(prefix) and k.endswith(('/credentials.json','/outputs.json'))}
-  if not selected:raise HTTPException(404,'해당 학생의 접속 자료가 없습니다.')
-  buffer=io.BytesIO()
-  with zipfile.ZipFile(buffer,'w') as z:
-   for path,value in selected.items():z.writestr(path,base64.b64decode(value))
+  from .aws_student_bundles import kit,people
+  try:content,access=kit(json.loads(e['config']),connection(e['connection_id'])['account'],vault.open(e['state'],'state:'+id),student,people(store,e['event_id']).get(student,{}))
+  except providers.CloudError as error:raise HTTPException(409,str(error))
   store.audit(actor['email'],'STUDENT_SECRET_DOWNLOAD',id+':'+student)
-  return Response(buffer.getvalue(),media_type='application/zip',headers={'Content-Disposition':f'attachment; filename="{student}-private-access.zip"'})
+  return Response(content,media_type='application/zip',headers={'Content-Disposition':f'attachment; filename="{student}-aws-access.zip"'})
+ @app.post('/environments/{id}/students/archive')
+ async def aws_students_archive(request:Request,id:str):
+  actor,d=await form(request,['ADMIN']);e=store.one('SELECT * FROM environments WHERE id=?',(id,))
+  if not verify_password(str(d.get('password','')),actor['password']):raise HTTPException(403,'Cloud Ops 관리자 비밀번호를 확인하세요.')
+  if not e or not e['state']:raise HTTPException(409,'아직 내려받을 AWS 생성 기록이 없습니다.')
+  from .aws_student_bundles import archive,people
+  content,manifest=archive(json.loads(e['config']),connection(e['connection_id'])['account'],vault.open(e['state'],'state:'+id),people(store,e['event_id']))
+  if not any(x['included'] for x in manifest):raise HTTPException(409,'생성 완료한 학생의 출력 자료가 아직 없습니다.')
+  store.audit(actor['email'],'AWS_STUDENT_ARCHIVE_DOWNLOAD',id)
+  return Response(content,media_type='application/zip',headers={'Content-Disposition':'attachment; filename="aws-students-individual-zips.zip"'})
  @app.post('/nhn/batches')
  async def nhn_batch_create(request:Request):
   actor,d=await form(request,['ADMIN']);c=connection(str(d.get('connection_id','')));event=str(d.get('event_id',''));name=str(d.get('name','')).strip()

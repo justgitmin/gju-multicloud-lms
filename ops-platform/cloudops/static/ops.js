@@ -79,3 +79,5 @@ document.querySelector('[data-resource-action]')?.addEventListener('change',upda
 for(const input of document.querySelectorAll('[data-resource-select]'))input.addEventListener('change',updateSelection);
 document.querySelector('[data-select-visible]')?.addEventListener('change',event=>{for(const input of document.querySelectorAll('[data-resource-select]:not(:disabled)'))input.checked=event.target.checked;updateSelection();});
 filterResourceRows();
+
+for(const button of document.querySelectorAll('[data-aws-course-profile]'))button.addEventListener('click',()=>{const form=button.closest('form');for(const [name,value] of Object.entries({lab_id:'gju-mc-2026-aws',count:'14',instance:'t3.micro',volume:'20'}))form.elements.namedItem(name).value=value;form.elements.namedItem('s3').checked=true;form.elements.namedItem('rds').checked=true;});
