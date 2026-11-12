@@ -26,15 +26,18 @@ def create_app(settings=None,start_worker=True):
  app=FastAPI(title='TBIT Cloud Ops',docs_url=None,redoc_url=None,openapi_url=None,lifespan=lifespan);app.state.store=store;app.state.vault=vault;app.state.worker=worker
  dummy_hash=password_hash('dummy-not-a-user-'+secrets.token_hex(16))
  root=Path(__file__).parent;app.mount('/static',StaticFiles(directory=root/'static'),name='static');templates=Jinja2Templates(directory=root/'templates');templates.env.filters['kst']=lambda value:datetime.datetime.fromtimestamp(value,datetime.timezone(datetime.timedelta(hours=9))).strftime('%m/%d %H:%M:%S')
+ templates.env.filters['job_label']=lambda kind:{'SYNC':'서버 상태 동기화','START':'서버 시작','STOP':'서버 일시 중지','RESOURCE_REFRESH':'자원 실제 상태 조회','RESOURCE_ACTION':'선택 자원 작업','PROVISION':'AWS 교육 환경 생성','DESTROY':'AWS 교육 환경 삭제','NHN_PLAN':'NHN 생성 계획 조회','NHN_ENABLE':'NHN 서비스 활성화','NHN_APPLY':'NHN 저장소·DB 준비','NHN_CLEANUP':'NHN 생성 자원 정리','NHN_SERVER_PLAN':'NHN 서버 계획 조회','NHN_SERVERS':'NHN 학생 환경 준비','NHN_IPS':'NHN 공인 IP 연결','NHN_IAM_PLAN':'학생 IAM 권한 조회','NHN_IAM_APPLY':'학생 IAM 권한 적용'}.get(kind,kind)
  def user(request,roles=None):
   token=request.cookies.get(COOKIE,'');row=store.one('SELECT u.*,s.csrf FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.expires>? AND u.active=1',(digest(token),time.time())) if re.fullmatch('[0-9a-f]{64}',token) else None
   if not row:raise HTTPException(401,'로그인이 필요합니다.')
   if roles and row['role'] not in roles:store.audit(row['email'],'ACCESS_DENIED',request.url.path,'DENIED');raise HTTPException(403,'이 작업의 권한이 없습니다.')
   return row
  async def form(request,roles=None,anonymous=False):
-  actor=None if anonymous else user(request,roles);data=await request.form(max_fields=40,max_files=0,max_part_size=100000)
+  actor=None if anonymous else user(request,roles);data=await request.form(max_fields=400,max_files=0,max_part_size=100000)
   expected=request.cookies.get('cloudops_login_csrf','') if anonymous else actor['csrf']
   if not expected or not secrets.compare_digest(str(data.get('csrf','')),expected):raise HTTPException(403,'화면을 새로고침하고 다시 시도하세요.')
+  requested=str(data.get('_return',''))
+  if re.fullmatch(r'/#[A-Za-z0-9_/-]{1,120}',requested):request.state.return_to=requested
   return actor,data
  def csrf(actor):return actor['csrf'] if actor else secrets.token_hex(32)
  def redirect(target='/'):return RedirectResponse(target,303)
@@ -57,11 +60,12 @@ def create_app(settings=None,start_worker=True):
     chunks.append(chunk)
    request._body=b''.join(chunks)
   response=await call_next(request);response.headers.update({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; form-action 'self'; base-uri 'none'"})
+  if response.status_code==303 and response.headers.get('location') in ['/#jobs','/#resources','/#events','/#users','/#security'] and getattr(request.state,'return_to',None):response.headers['location']=request.state.return_to
   return response
  @app.exception_handler(HTTPException)
  async def error_page(request,error):
   if error.status_code==401 and not request.url.path.startswith('/api/'):return RedirectResponse('/login',303)
-  return templates.TemplateResponse(request=request,name='error.html',context={'message':error.detail,'code':error.status_code},status_code=error.status_code)
+  return templates.TemplateResponse(request=request,name='error.html',context={'message':error.detail,'code':error.status_code,'back':getattr(request.state,'return_to','/#overview')},status_code=error.status_code)
  @app.get('/health')
  def health():return {'status':'ok'}
  @app.get('/login')
@@ -95,13 +99,36 @@ def create_app(settings=None,start_worker=True):
     code,name=next(iter(matches))
     if resource['owner']==code:resource['owner_display']=code+' · '+name
   context={'user':actor,'csrf':csrf(actor),'connections':connections,'resources':resources,'nhn_batches':[{**b,'options':json.loads(b['config']),'bootstrap':store.one('SELECT status FROM nhn_bootstrap WHERE batch_id=?',(b['id'],)),'iam':store.one('SELECT config,status,state,updated FROM nhn_iam WHERE batch_id=?',(b['id'],)),'people':json.loads((store.one('SELECT config FROM nhn_bootstrap WHERE batch_id=?',(b['id'],)) or {'config':'{}'})['config']).get('roster',{}),'items':[{**i,'details':json.loads(i['summary'])} for i in store.all('SELECT student,summary,status,message FROM nhn_items WHERE batch_id=? ORDER BY student',(b['id'],))]} for b in store.all('SELECT id,name,config,planned FROM nhn_batches ORDER BY created DESC')] if actor['role']=='ADMIN' else [],'events':store.all('SELECT * FROM events ORDER BY created DESC'),'environments':store.all('SELECT e.id,e.lab_id,e.connection_id,e.config,c.name connection_name FROM environments e JOIN connections c ON c.id=e.connection_id ORDER BY e.created DESC'),'jobs':store.all('SELECT j.id,j.kind,j.target,j.status,j.message,j.updated,u.email FROM jobs j JOIN users u ON u.id=j.actor ORDER BY created DESC LIMIT 50'),'audits':store.all('SELECT * FROM audits ORDER BY id DESC LIMIT 50') if actor['role']=='ADMIN' else [],'users':store.all('SELECT id,email,name,role,active FROM users ORDER BY id') if actor['role']=='ADMIN' else []}
+  from .resource_ops import Resources,capabilities
+  manager=Resources(store,vault,worker.stop);managed=[]
+  for b in store.all('SELECT id FROM nhn_batches'):
+   try:managed.extend(manager.catalog(b['id']))
+   except Exception:pass
+  from .aws_resources import AWSResources
+  aws_manager=AWSResources(store,vault,worker.stop)
+  for e in store.all('SELECT id FROM environments'):
+   try:managed.extend(aws_manager.catalog(e['id']))
+   except Exception:pass
+  covered={(r.get('provider','NHN'),r['remote_id']) for r in managed if r['kind']=='server' and r['remote_id']}
+  controls=[]
+  for r in resources:
+   r['writable']=next((c['writable'] for c in connections if c['id']==r['connection_id']),False)
+   if (r['provider'],r['remote_id']) in covered:continue
+   controls.append({**r,'selection':'server:'+r['id'],'kind':'server','label':'서버','presence':0 if r['missing'] else 1,'actions':capabilities({'kind':'server','presence':0 if r['missing'] else 1,'state':r['state']}),'updated':r['seen'],'student':r['owner_display'] if 'owner_display' in r else r['owner'],'project':r['connection_name'],'note':'삭제는 중지 후 가능합니다.'})
+  for r in managed:
+   c=next((c for c in connections if c['id']==r['connection_id']),{})
+   assigned=next((x for x in resources if x['provider']==r.get('provider','NHN') and x['remote_id']==r['remote_id']),{}) if r['kind']=='server' else {}
+   if assigned.get('event_id'):r['event_id']=assigned['event_id']
+   r['owner_display']=assigned.get('owner_display') or assigned.get('owner') or (r['student']+' · '+r['owner'] if r['owner'] else r['student'])
+   controls.append({**r,'selection':('aws:' if r.get('provider')=='AWS' else 'managed:')+r['id'],'provider':r.get('provider','NHN'),'event_name':next((e['name'] for e in context['events'] if e['id']==r['event_id']),''),'writable':c.get('writable',False)})
+  context.update({'controlled_resources':controls,'resource_actions':store.all('SELECT a.*,COALESCE(o.kind,w.kind,"server") kind,COALESCE(r.name,o.student,w.student,a.resource_id) name FROM resource_actions a LEFT JOIN resource_observations o ON o.id=a.resource_id LEFT JOIN aws_resource_observations w ON w.id=a.resource_id LEFT JOIN resources r ON r.id=a.resource_id ORDER BY a.id DESC LIMIT 100')})
   for batch in context['nhn_batches']:
    if batch['iam']:
     item=batch['iam'];item['options']=json.loads(item['config']);item['plan']=vault.open(item['state'],'nhn-iam:'+batch['id']) if item['state'] else {}
   return templates.TemplateResponse(request=request,name='dashboard.html',context=context)
  @app.get('/api/overview')
  def overview(request:Request):
-  user(request);return {'resources':store.all('SELECT id,state,ip,seen,missing FROM resources'),'jobs':store.all('SELECT id,status,message FROM jobs ORDER BY created DESC LIMIT 50')}
+  user(request);return {'observations':store.all('SELECT id,updated FROM resource_observations')+store.all('SELECT id,updated FROM aws_resource_observations'),'resources':store.all('SELECT id,state,ip,seen,missing FROM resources'),'jobs':store.all('SELECT id,status,message FROM jobs ORDER BY created DESC LIMIT 50')}
  @app.post('/connections')
  async def add_connection(request:Request):
   actor,d=await form(request,['ADMIN']);provider=str(d.get('provider'));name=str(d.get('name','')).strip();region=str(d.get('region','')).strip();account=str(d.get('account','')).strip();id=secrets.token_hex(16)
@@ -164,7 +191,58 @@ def create_app(settings=None,start_worker=True):
   c=connection(r['connection_id'])
   try:result=providers.adapter(c,vault.open(c['secret'],'connection:'+c['id'])).metrics(r['remote_id'])
   except Exception:raise HTTPException(502,'지표를 가져오지 못했습니다. 연결·권한·수집 설정을 확인하세요.')
-  store.audit(actor['email'],'METRICS_READ',id);return templates.TemplateResponse(request=request,name='metrics.html',context={'resource':r,'metrics':result})
+  store.audit(actor['email'],'METRICS_READ',id);return templates.TemplateResponse(request=request,name='metrics.html',context={'resource':r,'metrics':result,'back':getattr(request.state,'return_to','/#resources')})
+ @app.post('/operations/refresh')
+ async def resource_refresh(request:Request):
+  actor,d=await form(request,['ADMIN','OPERATOR']);ids=d.getlist('connection_id')
+  if ids==['ALL']:ids=[c['id'] for c in store.all('SELECT id FROM connections')]
+  if not ids:raise HTTPException(400,'새로고침할 연결을 선택하세요.')
+  try:
+   with store.connect() as db:
+    for id in sorted(set(ids)):
+     c=connection(id);batches=store.all('SELECT id FROM nhn_batches WHERE connection_id=?',(id,))
+     envs=store.all('SELECT id FROM environments WHERE connection_id=?',(id,))
+     kind='RESOURCE_REFRESH' if batches or envs else 'SYNC';payload={'batches':[b['id'] for b in batches],'environments':[e['id'] for e in envs]}
+     db.execute('INSERT INTO jobs VALUES(?,?,?,?,?,?,?,?,?,?,?)',(secrets.token_hex(16),actor['id'],id,c['revision'],kind,id,json.dumps(payload),'QUEUED',time.time(),time.time(),'자원 실제 상태 조회 대기'))
+  except sqlite3.IntegrityError:raise HTTPException(409,'선택한 연결에 실행 중인 작업이 있습니다. 완료 후 다시 요청하세요.')
+  return redirect('/#resources')
+ @app.post('/operations/resources')
+ async def selected_resource_action(request:Request):
+  actor,d=await form(request,['ADMIN','OPERATOR']);action=str(d.get('kind',''));selected=list(dict.fromkeys(d.getlist('selected')))
+  if action not in ['START','STOP','DELETE'] or not 1<=len(selected)<=200 or d.get('ack')!='on':raise HTTPException(400,'대상 자원·작업을 선택하고 확인란을 체크하세요.')
+  if action=='DELETE' and (actor['role']!='ADMIN' or d.get('delete_confirm')!='삭제' or not verify_password(str(d.get('password','')),actor['password'])):raise HTTPException(403,'삭제는 관리자 비밀번호와 삭제 확인 문구가 필요합니다.')
+  from .resource_ops import Resources,capabilities
+  from .aws_resources import AWSResources
+  aws_manager=AWSResources(store,vault,worker.stop);aws_catalog={r['id']:r for e in store.all('SELECT id FROM environments') for r in aws_manager.catalog(e['id'])}
+  manager=Resources(store,vault,worker.stop);catalog={r['id']:r for b in store.all('SELECT id FROM nhn_batches') for r in manager.catalog(b['id'])};groups={}
+  for value in selected:
+   source,sep,id=value.partition(':')
+   if source=='aws' and sep:
+    row=aws_catalog.get(id)
+    if not row:raise HTTPException(400,'AWS 관리 자원이 변경되었습니다.')
+    cid=row['connection_id'];target=row['environment_id']
+   elif source=='managed' and sep:
+    row=catalog.get(id)
+    if not row:raise HTTPException(400,'관리 자원이 변경되었습니다.')
+    cid=row['connection_id'];target=row['batch_id']
+   elif source=='server' and sep:
+    row=store.one('SELECT * FROM resources WHERE id=?',(id,))
+    if not row or row['missing'] or not row['event_id']:raise HTTPException(400,'교육에 배정된 현재 서버를 선택하세요.')
+    row={**row,'kind':'server','presence':1};cid=row['connection_id'];target=cid
+   else:raise HTTPException(400,'자원 선택 형식 오류')
+   c=connection(cid)
+   if not c['writable'] or action not in capabilities(row):raise HTTPException(400,'지원하지 않는 작업 또는 조회 전용 연결입니다: '+row['name'])
+   group=groups.setdefault(cid,{'managed':{},'aws':{},'servers':[]})
+   if source=='aws':group['aws'].setdefault(target,[]).append({'id':id,'remote_id':row['remote_id']})
+   elif source=='managed':group['managed'].setdefault(target,[]).append({'id':id,'remote_id':row['remote_id']})
+   else:group['servers'].append({'id':id,'remote_id':row['remote_id']})
+  try:
+   with store.connect() as db:
+    for cid,payload in groups.items():
+     c=connection(cid);payload['action']=action
+     db.execute('INSERT INTO jobs VALUES(?,?,?,?,?,?,?,?,?,?,?)',(secrets.token_hex(16),actor['id'],cid,c['revision'],'RESOURCE_ACTION',cid,json.dumps(payload),'QUEUED',time.time(),time.time(),'선택 자원 '+action+' 대기'))
+  except sqlite3.IntegrityError:raise HTTPException(409,'선택한 연결에 실행 중인 작업이 있습니다. 중복 실행하지 않았습니다.')
+  store.audit(actor['email'],'RESOURCE_BULK_'+action,str(len(selected))+'개');return redirect('/#resources')
  @app.post('/environments')
  async def environment(request:Request):
   actor,d=await form(request,['ADMIN']);c=connection(str(d.get('connection_id','')));lab=str(d.get('lab_id',''));event=str(d.get('event_id',''))

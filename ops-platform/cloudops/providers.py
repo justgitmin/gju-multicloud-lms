@@ -27,7 +27,8 @@ class AWS:
   return rows
  def action(self,remote,action):
   if not re.fullmatch(r'i-[0-9a-f]{8,17}',remote):raise CloudError('잘못된 EC2 ID')
-  self.identity();getattr(self.client('ec2'),action+'_instances')(InstanceIds=[remote])
+  if action not in ['start','stop','delete']:raise CloudError('지원하지 않는 서버 작업')
+  self.identity();getattr(self.client('ec2'),('terminate' if action=='delete' else action)+'_instances')(InstanceIds=[remote])
  def metrics(self,remote):
   self.identity();now=datetime.datetime.now(datetime.timezone.utc)
   stats=self.client('cloudwatch').get_metric_statistics(Namespace='AWS/EC2',MetricName='CPUUtilization',Dimensions=[{'Name':'InstanceId','Value':remote}],StartTime=now-datetime.timedelta(minutes=30),EndTime=now,Period=300,Statistics=['Average'])
@@ -49,9 +50,9 @@ class NHN:
   u=urlparse(found)
   if u.scheme!='https' or not u.hostname or not (u.hostname.endswith('.nhncloudservice.com') or u.hostname.endswith('.cloud.toast.com')) or u.port not in (None,443) or u.username or u.password or u.query or u.fragment:raise CloudError('NHN 엔드포인트 검증 실패')
   self.endpoint=found.rstrip('/')
- def request(self,path,body=None):
+ def request(self,path,body=None,method=None):
   if not self.token:self.auth()
-  r=self.http.request('POST' if body is not None else 'GET',self.endpoint+path,headers={'X-Auth-Token':self.token},json=body)
+  r=self.http.request(method or ('POST' if body is not None else 'GET'),self.endpoint+path,headers={'X-Auth-Token':self.token},json=body)
   if not r.is_success:raise CloudError(f'NHN 요청 실패 HTTP {r.status_code}')
   return r.json() if r.content else {}
  def inventory(self):
@@ -66,7 +67,9 @@ class NHN:
   raise CloudError('NHN 조회 상한 초과: 연결 범위를 나누세요.')
  def action(self,remote,action):
   if not re.fullmatch(r'[0-9a-f-]{36}',remote):raise CloudError('잘못된 NHN 서버 ID')
-  self.request('/servers/'+remote+'/action',{'os-'+action:None})
+  if action not in ['start','stop','delete']:raise CloudError('지원하지 않는 서버 작업')
+  if action=='delete':self.request('/servers/'+remote,method='DELETE')
+  else:self.request('/servers/'+remote+'/action',{'os-'+action:None})
  def metrics(self,remote):return {'cpu':None,'memory':None,'disk':None,'note':'기본 연결은 서버 상태·IP 조회입니다. 지표 수집은 추가 연동이 필요합니다.'}
 
 class NCP:
@@ -89,7 +92,8 @@ class NCP:
   raise CloudError('NAVER 조회 상한 초과')
  def action(self,remote,action):
   if not re.fullmatch(r'[0-9]+',remote):raise CloudError('잘못된 NAVER 서버 ID')
-  self.request(action+'ServerInstances',{'serverInstanceNoList.1':remote})
+  if action not in ['start','stop','delete']:raise CloudError('지원하지 않는 서버 작업')
+  self.request(('terminate' if action=='delete' else action)+'ServerInstances',{'serverInstanceNoList.1':remote})
  def metrics(self,remote):return {'cpu':None,'memory':None,'disk':None,'note':'Cloud Insight 지표는 별도 연동 전까지 미수집으로 표시합니다.'}
 
 def adapter(c,secret):return {'AWS':AWS,'NHN':NHN,'NCP':NCP}[c['provider']](c,secret)
