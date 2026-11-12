@@ -3,7 +3,7 @@ const provider=document.querySelector('#provider');
 if(provider){const show=()=>{for(const el of document.querySelectorAll('[data-providers]')){el.hidden=!el.dataset.providers.split(' ').includes(provider.value);for(const input of el.querySelectorAll('input'))input.disabled=el.hidden;}};provider.addEventListener('change',()=>{setRegions();show();});setRegions();show();}
 function setRegions(){const region=document.querySelector('#region');if(!region||!provider)return;const options={AWS:[['ap-northeast-2','서울'],['ap-northeast-1','도쿄'],['us-east-1','버지니아'],['us-west-2','오리건']],NHN:[['KR1','판교'],['KR2','평촌'],['JP1','도쿄']],NCP:[['KR','한국'],['JPN','일본']]};region.replaceChildren(...options[provider.value].map(([value,label])=>new Option(label+' ('+value+')',value)));}
 for(const el of document.querySelectorAll('[data-end]')){const now=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul'}).format(new Date());if(el.dataset.end<now){el.classList.add('expired');el.append(' · 종료일 경과');}}
-if(document.querySelector('#active-jobs'))setInterval(async()=>{try{const response=await fetch('/api/overview',{cache:'no-store'});if(response.status===401){location.assign('/login');return;}if(!response.ok)return;const data=await response.json();document.querySelector('#active-jobs').textContent=data.jobs.filter(j=>['QUEUED','RUNNING'].includes(j.status)).length;for(const j of data.jobs){const row=document.querySelector(`[data-job="${j.id}"]`);if(row){row.querySelector('.job-status').textContent=j.status;row.querySelector('.job-message').textContent=j.message;}}for(const r of data.resources){const row=document.querySelector(`[data-resource="${r.id}"]`);if(row){row.querySelector('.state').textContent=r.missing?'목록에서 미확인':r.state;row.querySelector('.ip').textContent=r.ip||'주소 없음';}}for(const observation of data.observations||[]){const row=document.querySelector(`[data-observation="${observation.id}"]`);if(row&&observation.updated>Number(row.dataset.checkedAt)){const notice=document.querySelector('#resource-new-data');if(notice){notice.hidden=false;notice.querySelector('a').href='/'+location.hash;}}}}catch{}},15000);
+if(document.querySelector('#active-jobs'))setInterval(async()=>{try{const response=await fetch('/api/overview',{cache:'no-store'});if(response.status===401){location.assign('/login');return;}if(!response.ok)return;const data=await response.json();renderConnectionStates(data.connections||[]);document.querySelector('#active-jobs').textContent=data.jobs.filter(j=>['QUEUED','RUNNING'].includes(j.status)).length;for(const j of data.jobs){const row=document.querySelector(`[data-job="${j.id}"]`);if(row){row.querySelector('.job-status').textContent=j.status;row.querySelector('.job-message').textContent=j.message;}}for(const r of data.resources){const row=document.querySelector(`[data-resource="${r.id}"]`);if(row){row.querySelector('.state').textContent=r.missing?'목록에서 미확인':r.state;row.querySelector('.ip').textContent=r.ip||'주소 없음';}}for(const observation of data.observations||[]){const row=document.querySelector(`[data-observation="${observation.id}"]`);if(row&&observation.updated>Number(row.dataset.checkedAt)){const notice=document.querySelector('#resource-new-data');if(notice){notice.hidden=false;notice.querySelector('a').href='/'+location.hash;}}}}catch{}},15000);
 
 // Progressive navigation: without JavaScript the existing anchors/forms still work.
 const views=[...document.querySelectorAll('[data-view]')];
@@ -24,7 +24,7 @@ if(views.length){
   for(const p of panels)p.hidden=p.dataset.vendorPanel!==vendor;
   for(const a of document.querySelectorAll('[data-vendor]')){if(a.dataset.vendor===vendor)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');}
   for(const a of document.querySelectorAll('.sidebar nav a')){if(a.getAttribute('href')==='#'+view.dataset.view)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');}
-  if(['resources','connections'].includes(view.dataset.view))filterCloud(view,['AWS','NHN','NCP'].includes(cloud)?cloud:'all');
+  if(['resources','connections'].includes(view.dataset.view))filterCloud(view,['AWS','NHN','NCP'].includes(cloud)?cloud:(target?.dataset.cloudCard||'all'));
   if(target&&target!==view&&target.id!=='overview'){for(let p=target.parentElement;p&&p!==view;p=p.parentElement)if(p.tagName==='DETAILS')p.open=true;target.scrollIntoView({block:'start'});}
   else window.scrollTo({top:0});
   restoreConsoleState();filterResourceRows();
@@ -81,3 +81,15 @@ document.querySelector('[data-select-visible]')?.addEventListener('change',event
 filterResourceRows();
 
 for(const button of document.querySelectorAll('[data-aws-course-profile]'))button.addEventListener('click',()=>{const form=button.closest('form');for(const [name,value] of Object.entries({lab_id:'gju-mc-2026-aws',count:'14',instance:'t3.micro',volume:'20'}))form.elements.namedItem(name).value=value;form.elements.namedItem('s3').checked=true;form.elements.namedItem('rds').checked=true;});
+
+function renderConnectionStates(connections){
+ const labels={QUEUED:'동기화 대기 중 · 앞선 작업 완료 후 시작합니다',RUNNING:'동기화 진행 중',SUCCEEDED:'동기화 완료',FAILED:'동기화 실패 · 아래 사유 확인',INTERRUPTED:'동기화 중단 · 다시 요청 필요'};
+ for(const connection of connections){
+  const card=document.getElementById('connection-'+connection.id);if(!card)continue;
+  const last=card.querySelector('[data-connection-last-sync]'),state=card.querySelector('[data-connection-sync-status]'),error=card.querySelector('[data-connection-error]'),button=card.querySelector('[data-connection-sync-button]');
+  if(last)last.textContent=connection.last_sync?'최근 성공 '+new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date(connection.last_sync*1000))+' KST':'아직 성공한 동기화 없음';
+  if(state)state.textContent=labels[connection.sync_job?.status]||'';
+  if(error){const message=connection.error||(['FAILED','INTERRUPTED'].includes(connection.sync_job?.status)?connection.sync_job.message:'');error.hidden=!message;error.textContent=message||'';}
+  if(button)button.disabled=['QUEUED','RUNNING'].includes(connection.sync_job?.status);
+ }
+}
