@@ -66,7 +66,7 @@ class Worker:
 
  def run_one(self):
   with self.store.connect() as db:
-   db.execute('BEGIN IMMEDIATE');job=db.execute("SELECT * FROM jobs WHERE status='QUEUED' ORDER BY created LIMIT 1").fetchone()
+   db.execute('BEGIN IMMEDIATE');pending=db.execute("SELECT * FROM jobs WHERE status='QUEUED' ORDER BY created").fetchall();job=next((row for row in pending if not json.loads(row['payload']).get('automatic')),pending[0] if pending else None)
    if not job:return False
    job=dict(job);db.execute("UPDATE jobs SET status='RUNNING',updated=?,message='클라우드 요청 실행 중' WHERE id=?",(time.time(),job['id']))
   try:
@@ -170,9 +170,11 @@ class Worker:
      for c in self.store.all('SELECT * FROM connections'):
       # New or failing credentials require an explicit operator check, not a retry loop.
       if not c['last_sync'] or c['error']:continue
+      # Parent batch observations already cover these NHN child connections.
+      if self.store.one("SELECT 1 FROM resource_observations o JOIN nhn_batches b ON b.id=o.batch_id JOIN resources r ON r.remote_id=o.remote_id WHERE r.connection_id=? AND o.kind='server' AND o.presence=1 AND o.updated>? AND b.connection_id!=? LIMIT 1",(c['id'],time.time()-300,c['id'])):continue
       if not self.store.one("SELECT id FROM jobs WHERE connection_id=? AND status IN ('QUEUED','RUNNING')",(c['id'],)):
        try:
         batches=self.store.all('SELECT id FROM nhn_batches WHERE connection_id=?',(c['id'],));envs=self.store.all('SELECT id FROM environments WHERE connection_id=?',(c['id'],))
-        self.enqueue(admin['id'],c,'RESOURCE_REFRESH' if batches or envs else 'SYNC',c['id'],{'batches':[b['id'] for b in batches],'environments':[e['id'] for e in envs]})
+        self.enqueue(admin['id'],c,'RESOURCE_REFRESH' if batches or envs else 'SYNC',c['id'],{'automatic':True,'batches':[b['id'] for b in batches],'environments':[e['id'] for e in envs]})
        except Exception:pass
    self.stop.wait(2)

@@ -83,9 +83,13 @@ def create_app(settings=None,start_worker=True):
  @app.post('/logout')
  async def logout(request:Request):
   actor,_=await form(request);store.execute('DELETE FROM sessions WHERE token=?',(digest(request.cookies[COOKIE]),));store.audit(actor['email'],'LOGOUT');response=RedirectResponse('/login',303);response.delete_cookie(COOKIE);return response
+ def connection_states():
+  result=store.all('SELECT id,name,provider,region,account,writable,last_sync,error FROM connections ORDER BY name')
+  for c in result:c['sync_job']=store.one("SELECT status,message,updated FROM jobs WHERE connection_id=? AND kind IN ('SYNC','RESOURCE_REFRESH') ORDER BY created DESC,updated DESC LIMIT 1",(c['id'],))
+  return result
  @app.get('/')
  def dashboard(request:Request):
-  actor=user(request);connections=store.all('SELECT id,name,provider,region,account,writable,last_sync,error FROM connections ORDER BY name');resources=store.all('SELECT r.*,c.provider,c.name connection_name,e.name event_name FROM resources r JOIN connections c ON c.id=r.connection_id LEFT JOIN events e ON e.id=r.event_id ORDER BY r.missing,r.name')
+  actor=user(request);connections=connection_states();resources=store.all('SELECT r.*,c.provider,c.name connection_name,e.name event_name FROM resources r JOIN connections c ON c.id=r.connection_id LEFT JOIN events e ON e.id=r.event_id ORDER BY r.missing,r.name')
   # Resolve display names from a matching education and immutable server ID.
   # Do not rewrite the stored assignment or replace manually entered team names.
   labels={}
@@ -132,7 +136,7 @@ def create_app(settings=None,start_worker=True):
   return templates.TemplateResponse(request=request,name='dashboard.html',context=context)
  @app.get('/api/overview')
  def overview(request:Request):
-  user(request);return {'observations':store.all('SELECT id,updated FROM resource_observations')+store.all('SELECT id,updated FROM aws_resource_observations'),'resources':store.all('SELECT id,state,ip,seen,missing FROM resources'),'jobs':store.all('SELECT id,status,message FROM jobs ORDER BY created DESC LIMIT 50')}
+  user(request);return {'connections':[{k:c[k] for k in ['id','last_sync','error','sync_job']} for c in connection_states()],'observations':store.all('SELECT id,updated FROM resource_observations')+store.all('SELECT id,updated FROM aws_resource_observations'),'resources':store.all('SELECT id,state,ip,seen,missing FROM resources'),'jobs':store.all('SELECT id,status,message FROM jobs ORDER BY created DESC LIMIT 50')}
  @app.post('/connections')
  async def add_connection(request:Request):
   actor,d=await form(request,['ADMIN']);provider=str(d.get('provider'));name=str(d.get('name','')).strip();region=str(d.get('region','')).strip();account=str(d.get('account','')).strip();id=secrets.token_hex(16)
@@ -168,7 +172,9 @@ def create_app(settings=None,start_worker=True):
   store.execute('UPDATE connections SET secret=?,writable=?,revision=revision+1 WHERE id=?',(encrypted,int(d.get('writable')=='on'),id));store.audit(actor['email'],'CONNECTION_SECURITY_UPDATE',id);return redirect(f'/?saved={id}#connection-{id}')
  @app.post('/connections/{id}/sync')
  async def sync(request:Request,id:str):
-  actor,_=await form(request,['ADMIN','OPERATOR']);queue(actor,connection(id),'SYNC',id);return redirect(f'/#connection-{id}')
+  actor,_=await form(request,['ADMIN','OPERATOR']);queue(actor,connection(id),'SYNC',id)
+  back=getattr(request.state,'return_to','')
+  return redirect(back if back.startswith(('/#connections','/#connection-')) else f'/#connection-{id}')
  @app.post('/events')
  async def add_event(request:Request):
   actor,d=await form(request,['ADMIN','OPERATOR']);name=str(d.get('name','')).strip();ends=str(d.get('ends',''))
