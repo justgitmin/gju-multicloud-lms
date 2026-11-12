@@ -1,0 +1,31 @@
+<section id="provision">
+ <div class="section-heading"><div><h2>AWS 영상 실습 환경</h2><p>서울 · Ubuntu 24.04 · Session Manager · 학생별 EC2/S3/사설 MySQL</p></div></div>
+ <aside class="notice">영상은 개념을 학습하고 실제 작업은 AWS 실습 가이드를 따릅니다. 먼저 s01로 접속·웹·S3·DB를 검증한 뒤 나머지 학생을 준비하세요. 생성에는 자원 비용이 발생합니다.</aside>
+ {% if not connections|selectattr('provider','equalto','AWS')|list %}<p class="error">등록된 AWS 연결이 없습니다. <a href="#connections/AWS">클라우드 연결에서 AWS 계정·운영자 인증정보를 먼저 등록하세요.</a></p>{% endif %}
+ <details class="card"><summary>AWS 환경 계획 저장 (아직 생성하지 않음)</summary>
+ <form method="post" action="/environments" class="form-grid" data-aws-plan>{{ token() }}
+ <div><button type="button" class="secondary" data-aws-course-profile>광주대 영상 실습 · 14명 설정 채우기</button></div>
+ <label>AWS 연결<select name="connection_id" required>{% for c in connections if c.provider=='AWS' and c.region=='ap-northeast-2' %}<option value="{{ c.id }}">{{ c.name }} · {{ c.account }}</option>{% endfor %}</select></label>
+ <label>교육<select name="event_id" required>{% for e in events %}<option value="{{ e.id }}">{{ e.name }}</option>{% endfor %}</select></label>
+ <label>환경 이름<input name="lab_id" required pattern="[a-z][a-z0-9-]{2,24}" placeholder="gju-mc-2026-aws"></label>
+ <label>학생 수<input type="number" name="count" min="1" max="30" value="1" required></label>
+ <label>서버 사양<select name="instance"><option>t3.micro</option><option>t3.small</option></select></label>
+ <label>디스크 GB<input type="number" name="volume" min="8" max="30" value="20" required></label>
+ <label class="check"><input type="checkbox" name="s3"> 개인 S3</label><label class="check"><input type="checkbox" name="rds"> 개인 RDS MySQL</label>
+ <p>14명 설정은 s01~s14, t3.micro, 디스크 20GB, 개인 S3·RDS, SSH 키가 필요 없는 Session Manager 접속입니다. 집 IP 등록은 필요하지 않습니다.</p><div><button>계획 저장</button></div>
+ </form></details>
+ {% for e in environments %}<article class="card" id="aws-environment-{{ e.id }}"><h3>{{ e.lab_id }}</h3><p>{{ e.connection_name }} · 학생 {{ e.options.students|length }}명 · {{ e.options.instance_type }} · 디스크 {{ e.options.volume_gb }}GB · {{ '개인 S3' if e.options.s3 else 'S3 없음' }} · {{ '개인 DB' if e.options.rds else 'DB 없음' }}</p>
+ <form method="post" action="/environments/{{ e.id }}/action">{{ token() }}<button class="secondary" name="kind" value="AWS_CHECK">생성 전 한도·사양 점검 (조회 전용)</button></form><p class="muted">점검 결과는 작업 기록에 표시됩니다. EC2 vCPU·RDS·네트워크 한도가 부족하면 생성 전에 차단합니다.</p>
+ <details><summary>환경 설정 상세</summary><code>{{ e.config }}</code></details>
+ <form method="post" action="/environments/{{ e.id }}/action">{{ token() }}
+ <label>생성할 학생 (여러 명 선택 가능)<select name="students" multiple size="6" required>{% for code in e.options.students %}<option value="{{ code }}" {% if loop.first %}selected{% endif %}>{{ code }} {{ e.people.get(code,{}).get('name','') }}</option>{% endfor %}</select></label>
+ <p class="muted">처음에는 s01만 생성하세요. 검증 후 Ctrl/Shift로 s02~s14만 선택합니다. 기존 학생의 생성 기록·비밀번호를 덮어쓰지 않습니다.</p>
+ <label>확인: 환경 이름<input name="confirm" required autocomplete="off" placeholder="{{ e.lab_id }}"></label>
+ <label>AWS 계정<select name="account" required>{% for c in connections if c.id==e.connection_id %}<option value="{{ c.account }}">{{ c.name }} · {{ c.account }}</option>{% endfor %}</select></label>
+ <button name="kind" value="PROVISION">선택 학생 생성</button></form>
+ <details><summary>학생별 ZIP 접속 자료 다운로드</summary><p>안내문·IAM 로그인·브라우저 접속 링크·서버·S3·DB 정보·예제 파일을 포함합니다. 출력이 미완료인 학생은 제외합니다. 전체 ZIP은 운영자만 보관하고 내부 ZIP을 개별 전달하세요.</p>
+ <form method="post" action="/environments/{{ e.id }}/students/archive">{{ token() }}<label>Cloud Ops 관리자 비밀번호<input name="password" type="password" required autocomplete="current-password"></label><button class="secondary">전체 학생별 ZIP 한 번에 다운로드</button></form>
+ <form method="post" action="/environments/{{ e.id }}/student">{{ token() }}<label>학생<select name="student" required>{% for code in e.options.students %}<option value="{{ code }}">{{ code }} {{ e.people.get(code,{}).get('name','') }}</option>{% endfor %}</select></label><label>Cloud Ops 관리자 비밀번호<input name="password" type="password" required autocomplete="current-password"></label><button class="secondary">학생 1명 ZIP 다운로드</button></form></details>
+ <details><summary>전체 교육 환경 삭제</summary><p class="error">학생 선택과 무관하게 이 환경의 학생 전체와 마지막 공용 네트워크를 삭제합니다. S3 파일·DB 데이터도 최종 백업 없이 삭제됩니다. 개별 자원 제어는 자원 관리 메뉴를 사용하세요.</p><form method="post" action="/environments/{{ e.id }}/action">{{ token() }}<input type="hidden" name="kind" value="DESTROY"><label>삭제 확인: 환경 이름<input name="confirm" required autocomplete="off" placeholder="{{ e.lab_id }}"></label><label>AWS 계정<select name="account" required>{% for c in connections if c.id==e.connection_id %}<option value="{{ c.account }}">{{ c.name }} · {{ c.account }}</option>{% endfor %}</select></label><button class="danger">환경 전체 삭제</button></form></details>
+ </article>{% endfor %}
+</section>

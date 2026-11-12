@@ -248,6 +248,42 @@ def owned_stack(c, student):
     return data
 
 
+class CapacityError(ValueError):
+    """Safe readiness failure containing only bounded identifiers and counts."""
+
+
+def capacity_preflight(c):
+    # Counts actual active On-Demand Standard instances; API/permission failures
+    # must fail closed rather than assuming zero usage or a default quota.
+    quota = aws(c, 'service-quotas', 'get-service-quota', '--service-code', 'ec2', '--quota-code', 'L-1216C47A')['Quota']['Value']
+    if type(quota) not in [int, float] or not 0 <= quota < 10**9:
+        raise CapacityError('EC2 vCPU quota response is missing or invalid')
+    inventory = aws(c, 'ec2', 'describe-instances', '--filters', 'Name=instance-state-name,Values=pending,running,stopping')
+    instances = [i for r in inventory['Reservations'] for i in r['Instances'] if not i.get('InstanceLifecycle') and i['InstanceType'][0].lower() in 'acdhimrtz']
+    types = sorted({i['InstanceType'] for i in instances} | {c['instance_type']})
+    cpus = {}
+    for offset in range(0, len(types), 100):
+        found = aws(c, 'ec2', 'describe-instance-types', '--instance-types', *types[offset:offset+100])['InstanceTypes']
+        cpus.update({i['InstanceType']: i['VCpuInfo']['DefaultVCpus'] for i in found})
+    if any(t not in cpus or type(cpus[t]) is not int or cpus[t] <= 0 for t in types):
+        raise CapacityError('Cannot determine actual EC2 vCPU requirements')
+    used = sum(cpus[i['InstanceType']] for i in instances)
+    required = cpus[c['instance_type']] * len(c['students'])
+    if used + required > quota:
+        raise CapacityError(f'EC2 Standard vCPU: existing {used} + requested {required} exceeds quota {quota}. Request increase before creating any resources.')
+    if c['rds']:
+        quotas = aws(c, 'rds', 'describe-account-attributes')['AccountQuotas']
+        db = next((q for q in quotas if q['AccountQuotaName'] == 'DBInstances'), None)
+        if db is None or type(db.get('Used')) is not int or type(db.get('Max')) is not int:
+            raise CapacityError('Cannot determine RDS DB instance quota')
+        if db['Used'] + len(c['students']) > db['Max']:
+            raise CapacityError(f"RDS DB instances: existing {db['Used']} + requested {len(c['students'])} exceeds quota {db['Max']}")
+        options = aws(c, 'rds', 'describe-orderable-db-instance-options', '--engine', 'mysql', '--db-instance-class', c['db_class'])['OrderableDBInstanceOptions']
+        if not any(o.get('DBInstanceClass') == c['db_class'] and o.get('Engine') == 'mysql' and o.get('Vpc') is True for o in options):
+            raise CapacityError('Chosen private MySQL DB class is unavailable in this region')
+    print(f"CAPACITY_OK students={len(c['students'])} additional_vCPU={required}; current quotas verified (no resource creation).")
+
+
 def preflight(c):
     # Read-only quota checks before creating any student environment.
     quotas = aws(c, 'service-quotas', 'list-service-quotas', '--service-code', 'vpc')['Quotas']
@@ -256,11 +292,17 @@ def preflight(c):
     for label, action, key in checks:
         quota = next((q['Value'] for q in quotas if q['QuotaName'].lower() == label.lower()), None)
         if quota is None:
-            raise ValueError('Cannot determine quota: ' + label + '; check Service Quotas')
+            raise CapacityError('Cannot determine quota: ' + label + '; check Service Quotas')
         existing = len(aws(c, 'ec2', action)[key])
         if existing + count > quota:
-            raise ValueError(f'{label}: existing {existing} + requested {count} exceeds quota {quota}. Request increase first.')
-    print('VPC/Internet gateway quotas checked. Also check EC2 vCPU, RDS and available budget before apply.')
+            raise CapacityError(f'{label}: existing {existing} + requested {count} exceeds quota {quota}. Request increase first.')
+    stacks = aws(c, 'cloudformation', 'describe-stacks')['Stacks']
+    names = {stack['StackName'] for stack in stacks if stack['StackStatus'] != 'DELETE_COMPLETE'}
+    conflicts = [student for student in c['students'] if c['lab_id'] + '-' + student in names]
+    if conflicts:
+        raise CapacityError('Existing requested student stacks: ' + ', '.join(conflicts) + '. Reuse original credentials and select only new students.')
+    capacity_preflight(c)
+    print('VPC, Internet gateway, EC2 vCPU and RDS capacity checked. Resource creation still incurs costs.')
 
 
 def deploy(c, state):

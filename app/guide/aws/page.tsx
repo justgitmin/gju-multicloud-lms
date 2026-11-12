@@ -10,14 +10,14 @@ export default async function AwsGuide(){await requireUser();return <><PortalHea
 hostname
 cat /etc/os-release`}</pre><p><b>성공 기준:</b> ubuntu 사용자와 Ubuntu 24.04가 표시됩니다. 연결 실패 시 서울 리전·본인 서버 ID·지정 세션 문서를 확인합니다. 서버가 중지됐다면 본인 서버를 시작하고 에이전트 연결을 기다리세요. 새 환경 첫 생성 후에도 연결 준비 시간이 필요합니다.</p><p>EC2의 기본 연결 문서나 SSH 탭으로 들어가면 권한 오류가 날 수 있습니다. 이 실습은 지정한 교육용 세션 문서를 사용합니다. EC2 Instance Connect와 Session Manager는 서로 다른 접속 방식입니다.</p><details><summary>SSH가 별도로 제공된 경우: MobaXterm 사용법</summary><MobaSteps provider="AWS"/></details></section>
 <section id="step3"><span>03 · AWS 영상 02</span><h2>네트워크 구조 확인</h2><p>VPC 콘솔에서 교육용 VPC, 웹 서브넷, 사설 DB 서브넷과 라우팅을 확인하세요. VPC는 학생이 공유하지만 서버·접근 권한은 개인별입니다. 네트워크나 보안 그룹을 새로 만들거나 변경하지 않습니다.</p><p>사용자 → 공인 웹 서버 → 사설 DB 흐름을 그리세요. 웹에는 인터넷 경로가 있고, DB는 본인 서버에서만 접근 가능한 이유를 적습니다.</p></section>
-<section id="step4"><span>04 · AWS 영상 04</span><h2>예제 웹 앱 전체 배포</h2><p>다음 명령은 <b>본인 학생 서버 터미널(Session Manager 또는 허용된 MobaXterm)</b>에서 실행합니다. LMS 서버나 관리자 CloudShell에 설치하는 명령이 아닙니다.</p><pre>{`sudo apt-get update
+<section id="step4"><span>04 · AWS 영상 04</span><h2>예제 웹 앱 전체 배포</h2><p>다음 명령은 <b>본인 학생 서버 터미널(Session Manager 또는 허용된 MobaXterm)</b>에서 실행합니다. LMS 서버나 관리자 CloudShell에 설치하는 명령이 아닙니다. 아래 curl 명령이 index.html과 assets 파일 전체를 서버에 자동 다운로드하므로 PC에서 따로 파일을 찾거나 올릴 필요가 없습니다. 개별 ZIP의 demo-app 폴더는 같은 예제의 참고용 사본입니다.</p><pre>{`sudo apt-get update
 sudo apt-get install -y nginx curl
 sudo systemctl enable --now nginx
 mkdir -p ~/demo-app/assets
 curl -fL https://raw.githubusercontent.com/justgitmin/gju-multicloud-lms/main/examples/demo-app/index.html -o ~/demo-app/index.html
 curl -fL https://raw.githubusercontent.com/justgitmin/gju-multicloud-lms/main/examples/demo-app/assets/style.css -o ~/demo-app/assets/style.css
 curl -fL https://raw.githubusercontent.com/justgitmin/gju-multicloud-lms/main/examples/demo-app/assets/app.js -o ~/demo-app/assets/app.js`}</pre><p>각 curl 명령이 성공했는지 확인한 뒤 진행하세요. 제목을 바꾸려면 <code>nano ~/demo-app/index.html</code>로 수정합니다. 기존 document root가 실습 Nginx 기본 경로인지 확인하고 파일을 백업한 뒤 배치합니다.</p><pre>{`sudo nginx -t
-sudo cp -a /var/www/html /var/www/html.before-lab
+sudo cp -a /var/www/html "/var/www/html.before-lab-$(date +%Y%m%d%H%M%S)"
 sudo cp -r ~/demo-app/. /var/www/html/
 curl -I http://127.0.0.1/
 curl http://127.0.0.1/`}</pre><p>EC2 콘솔에서 본인 서버의 현재 공인 IPv4를 확인하고 PC 브라우저에서 <code>http://본인공인IP</code>로 접속합니다. <b>성공 기준:</b> 제목·스타일·버튼이 동작합니다. 이 예제 앱의 성공 문구는 정적 JavaScript 동작 확인이며 실제 AWS API·DB 연결 검증은 아닙니다.</p></section>
