@@ -341,7 +341,7 @@ def create_app(settings=None,start_worker=True):
   # One consistent snapshot; parallel provisioning keeps updating other students.
   with store.connect() as db:
    db.execute('BEGIN')
-   b=db.execute('SELECT state FROM nhn_batches WHERE id=?',(id,)).fetchone()
+   b=db.execute('SELECT state,config FROM nhn_batches WHERE id=?',(id,)).fetchone()
    boot=db.execute('SELECT state FROM nhn_bootstrap WHERE batch_id=?',(id,)).fetchone()
    iam=db.execute("SELECT state,status FROM nhn_iam WHERE batch_id=?",(id,)).fetchone()
    rows=db.execute('SELECT student,status FROM nhn_items WHERE batch_id=?',(id,)).fetchall()
@@ -350,6 +350,7 @@ def create_app(settings=None,start_worker=True):
   batch=vault.open(b['state'],'nhn-state:'+id) if b['state'] else {}
   from .student_bundles import build
   iam_plan=vault.open(iam['state'],'nhn-iam:'+id) if iam and iam['state'] and iam['status']=='VERIFIED' else {}
+  if iam_plan.get('config')!=json.loads(b['config']):iam_plan={}
   iam_access={r['student']:{k:r.get(k,'') for k in ['username','login_url','project','project_id']} for r in iam_plan.get('rows',[]) if r['status']=='VERIFIED'}
   content,manifest=build(servers,batch,{r['student']:r['status'] for r in rows},iam_access)
   if not any(x.get('included') for x in manifest):raise HTTPException(409,'내려받을 준비 완료 서버가 없습니다.')
