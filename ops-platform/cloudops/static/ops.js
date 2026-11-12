@@ -5,6 +5,9 @@ function setRegions(){const region=document.querySelector('#region');if(!region|
 for(const el of document.querySelectorAll('[data-end]')){const now=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul'}).format(new Date());if(el.dataset.end<now){el.classList.add('expired');el.append(' · 종료일 경과');}}
 if(document.querySelector('#active-jobs'))setInterval(async()=>{try{const response=await fetch('/api/overview',{cache:'no-store'});if(response.status===401){location.assign('/login');return;}if(!response.ok)return;const data=await response.json();renderConnectionStates(data.connections||[]);document.querySelector('#active-jobs').textContent=data.jobs.filter(j=>['QUEUED','RUNNING'].includes(j.status)).length;for(const j of data.jobs){const row=document.querySelector(`[data-job="${j.id}"]`);if(row){row.querySelector('.job-status').textContent=j.status;row.querySelector('.job-message').textContent=j.message;}}for(const r of data.resources){const row=document.querySelector(`[data-resource="${r.id}"]`);if(row){row.querySelector('.state').textContent=r.missing?'목록에서 미확인':r.state;row.querySelector('.ip').textContent=r.ip||'주소 없음';}}for(const observation of data.observations||[]){const row=document.querySelector(`[data-observation="${observation.id}"]`);if(row&&observation.updated>Number(row.dataset.checkedAt)){const notice=document.querySelector('#resource-new-data');if(notice){notice.hidden=false;notice.querySelector('a').href='/'+location.hash;}}}}catch{}},15000);
 
+// A hash-only refresh link otherwise never requests a fresh dashboard.
+document.querySelector('.header-actions a')?.addEventListener('click',event=>{event.preventDefault();location.reload();});
+
 // Progressive navigation: without JavaScript the existing anchors/forms still work.
 const views=[...document.querySelectorAll('[data-view]')];
 if(views.length){
