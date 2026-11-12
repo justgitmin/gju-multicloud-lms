@@ -60,15 +60,54 @@ class Worker:
    job=dict(job);db.execute("UPDATE jobs SET status='RUNNING',updated=?,message='클라우드 요청 실행 중' WHERE id=?",(time.time(),job['id']))
   try:
    user=self.store.one('SELECT * FROM users WHERE id=?',(job['actor'],));c=self.store.one('SELECT * FROM connections WHERE id=?',(job['connection_id'],))
-   required=['ADMIN','OPERATOR'] if job['kind'] in ['SYNC','START','STOP'] else ['ADMIN']
+   required=['ADMIN','OPERATOR'] if job['kind'] in ['SYNC','START','STOP','RESOURCE_REFRESH','RESOURCE_ACTION'] else ['ADMIN']
+   if job['kind']=='RESOURCE_ACTION' and json.loads(job['payload']).get('action')=='DELETE':required=['ADMIN']
    if not user or not user['active'] or user['role'] not in required or not c or c['revision']!=job['revision']:raise providers.CloudError('권한 또는 연결 설정 변경으로 작업을 중단했습니다.')
-   if job['kind'] not in ['SYNC','NHN_PLAN','NHN_SERVER_PLAN','NHN_IAM_PLAN'] and not c['writable']:raise providers.CloudError('연결의 변경 권한이 비활성화되어 있습니다.')
+   if job['kind'] not in ['SYNC','NHN_PLAN','NHN_SERVER_PLAN','NHN_IAM_PLAN','RESOURCE_REFRESH'] and not c['writable']:raise providers.CloudError('연결의 변경 권한이 비활성화되어 있습니다.')
    secret=self.vault.open(c['secret'],'connection:'+c['id'])
    if job['kind']=='SYNC':self.sync(c,secret);message='동기화 완료'
    elif job['kind'] in ['START','STOP']:
     r=self.store.one('SELECT * FROM resources WHERE id=?',(job['target'],))
     if not r or r['connection_id']!=c['id'] or r['missing'] or not r['event_id']:raise providers.CloudError('교육에 배정된 현재 자원만 제어할 수 있습니다.')
     providers.adapter(c,secret).action(r['remote_id'],job['kind'].lower());message='요청 접수 완료 · 실제 상태는 다음 동기화에서 확인'
+   elif job['kind']=='RESOURCE_REFRESH':
+    from .resource_ops import Resources
+    manager=Resources(self.store,self.vault,self.stop);failed=0
+    for bid in json.loads(job['payload']).get('batches',[]):
+     batch=self.store.one('SELECT connection_id FROM nhn_batches WHERE id=?',(bid,))
+     if not batch or batch['connection_id']!=c['id']:raise providers.CloudError('자원 조회 연결 불일치')
+     try:manager.sync(bid)
+     except providers.CloudError:failed+=1
+    from .aws_resources import AWSResources
+    for eid in json.loads(job['payload']).get('environments',[]):
+     env=self.store.one('SELECT connection_id FROM environments WHERE id=?',(eid,))
+     if not env or env['connection_id']!=c['id']:raise providers.CloudError('AWS 조회 연결 불일치')
+     try:AWSResources(self.store,self.vault,self.stop).sync(eid)
+     except providers.CloudError:failed+=1
+    if not json.loads(job['payload']).get('batches'):self.sync(c,secret)
+    if failed:raise providers.CloudError(f'{failed}개 환경에서 일부 자원 조회 실패 · 자원별 결과 확인')
+    self.store.execute('UPDATE connections SET last_sync=?,error=NULL WHERE id=?',(time.time(),c['id']))
+    message='자원 생성 여부·실제 상태 확인 완료'
+   elif job['kind']=='RESOURCE_ACTION':
+    from .resource_ops import Resources,server_bulk
+    payload=json.loads(job['payload']);action=payload['action'];failed=0
+    if action not in ['START','STOP','DELETE']:raise providers.CloudError('지원하지 않는 작업')
+    for bid,selected in payload.get('managed',{}).items():
+     batch=self.store.one('SELECT connection_id FROM nhn_batches WHERE id=?',(bid,))
+     if not batch or batch['connection_id']!=c['id']:raise providers.CloudError('제어 대상 연결 불일치')
+     try:Resources(self.store,self.vault,self.stop).apply(bid,selected,action,job['id'])
+     except providers.CloudError:failed+=1
+    from .aws_resources import AWSResources
+    for eid,selected in payload.get('aws',{}).items():
+     env=self.store.one('SELECT connection_id FROM environments WHERE id=?',(eid,))
+     if not env or env['connection_id']!=c['id']:raise providers.CloudError('AWS 제어 연결 불일치')
+     try:AWSResources(self.store,self.vault,self.stop).apply(eid,selected,action,job['id'])
+     except providers.CloudError:failed+=1
+    if payload.get('servers'):
+     server_bulk(self.store,self.vault,c,payload['servers'],action,job['id'],self.stop)
+     self.sync(c,secret)
+    if failed:raise providers.CloudError(f'{failed}개 환경 작업·확인 실패 · 자원별 결과 확인')
+    message='선택 자원 요청 처리 완료 · 실제 상태와 자원별 결과 확인'
    elif job['kind'] in ['NHN_IAM_PLAN','NHN_IAM_APPLY']:
     from .nhn_iam import IAM
     batch=self.store.one('SELECT connection_id FROM nhn_batches WHERE id=?',(job['target'],))
@@ -104,7 +143,7 @@ class Worker:
   except Exception as error:
    message=str(error) if isinstance(error,providers.CloudError) else '요청 실패: 인증정보·권한·연결 설정을 확인하세요. 비밀정보 보호를 위해 원문 오류는 저장하지 않습니다.'
    status='FAILED'
-   if job['kind']=='SYNC':self.store.execute('UPDATE connections SET error=? WHERE id=?',(message,job['connection_id']))
+   if job['kind'] in ['SYNC','RESOURCE_REFRESH']:self.store.execute('UPDATE connections SET error=? WHERE id=?',(message,job['connection_id']))
   self.store.execute('UPDATE jobs SET status=?,updated=?,message=? WHERE id=?',(status,time.time(),message,job['id']));self.store.audit(job['actor'],'JOB_'+job['kind'],job['target'],status)
   return True
  def loop(self):
@@ -120,6 +159,8 @@ class Worker:
       # New or failing credentials require an explicit operator check, not a retry loop.
       if not c['last_sync'] or c['error']:continue
       if not self.store.one("SELECT id FROM jobs WHERE connection_id=? AND status IN ('QUEUED','RUNNING')",(c['id'],)):
-       try:self.enqueue(admin['id'],c,'SYNC',c['id'])
+       try:
+        batches=self.store.all('SELECT id FROM nhn_batches WHERE connection_id=?',(c['id'],));envs=self.store.all('SELECT id FROM environments WHERE connection_id=?',(c['id'],))
+        self.enqueue(admin['id'],c,'RESOURCE_REFRESH' if batches or envs else 'SYNC',c['id'],{'batches':[b['id'] for b in batches],'environments':[e['id'] for e in envs]})
        except Exception:pass
    self.stop.wait(2)

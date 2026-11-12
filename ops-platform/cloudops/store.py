@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS nhn_iam(batch_id TEXT PRIMARY KEY REFERENCES nhn_batc
 CREATE TABLE IF NOT EXISTS nhn_bootstrap(batch_id TEXT PRIMARY KEY REFERENCES nhn_batches(id),config TEXT NOT NULL,state TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'QUEUED',updated REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS nhn_items(batch_id TEXT NOT NULL REFERENCES nhn_batches(id),student TEXT NOT NULL,summary TEXT NOT NULL,status TEXT NOT NULL,message TEXT NOT NULL,updated REAL NOT NULL,PRIMARY KEY(batch_id,student));
 CREATE UNIQUE INDEX IF NOT EXISTS one_nhn_batch_scope ON nhn_batches(connection_id,name);
+CREATE TABLE IF NOT EXISTS aws_resource_observations(id TEXT PRIMARY KEY,environment_id TEXT NOT NULL REFERENCES environments(id),student TEXT NOT NULL,kind TEXT NOT NULL,remote_id TEXT NOT NULL,state TEXT NOT NULL,presence INTEGER NOT NULL,detail TEXT NOT NULL,updated REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS resource_observations(id TEXT PRIMARY KEY,batch_id TEXT NOT NULL REFERENCES nhn_batches(id),student TEXT NOT NULL,kind TEXT NOT NULL,remote_id TEXT NOT NULL,state TEXT NOT NULL,presence INTEGER NOT NULL,detail TEXT NOT NULL,updated REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS resource_actions(id INTEGER PRIMARY KEY,job_id TEXT NOT NULL,resource_id TEXT NOT NULL,action TEXT NOT NULL,status TEXT NOT NULL,message TEXT NOT NULL,created REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS audits(id INTEGER PRIMARY KEY,actor TEXT NOT NULL,event TEXT NOT NULL,target TEXT NOT NULL,result TEXT NOT NULL,created REAL NOT NULL);
 '''
 class Store:

@@ -15,8 +15,8 @@
   <label>운영자 User Access Key<input type="password" name="access_key" required autocomplete="off"></label>
   <label>운영자 Secret Access Key<input type="password" name="secret_key" required autocomplete="new-password"><small>역할 일괄 변경 때 사용한 운영자 키입니다. API 비밀번호와 다릅니다. 서버에서 암호화 보관합니다.</small></label>
   <label class="check"><input type="checkbox" name="db">학생별 사설 RDS도 생성 (추가 과금)</label>
-  <label>RDS 사양 이름<input name="db_flavor" placeholder="비워두면 최소 vCPU·메모리 사양 선택"></label>
-  <label>DB 버전 API 코드<input name="db_version" placeholder="비워두면 목록의 MySQL 8.0 최신 버전 선택"><small>계획에 실제 선택 사양·버전이 표시됩니다. 지원하지 않는 값은 차단됩니다.</small></label>
+  <label>DB 사양<select name="db_flavor"><option value="">자동 선택 · 지원되는 최소 사양</option></select></label>
+  <label>DB 버전<select name="db_version"><option value="">자동 선택 · 지원되는 MySQL 8.0 최신 버전</option></select><small>계획에서 실제 사양과 버전을 확인합니다.</small></label>
   <button>대상 조회·계획 만들기</button>
  </form></details>
  {% for b in nhn_batches %}

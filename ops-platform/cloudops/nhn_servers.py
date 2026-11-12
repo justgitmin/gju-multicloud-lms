@@ -110,6 +110,7 @@ class Servers:
    for code,item in state['students'].items():
     if item.get('ready'):continue
     try:
+     if item.get('lifecycle_deleted'):raise CloudError('개별 삭제한 서버입니다. 기존 계획으로 재생성하지 않습니다.')
      self.student(api,b,cfg,state,code,item);self.register(b,cfg,secret,code,item);item['ready']=True;self.save(id,state,'RUNNING');self.batch.report(id,code,item['summary'],'SERVER_READY','서버·개별 키·IP 준비 완료 · 실습 네트워크 정책 적용 완료')
     except Exception as error:failures+=1;self.save(id,state,'RUNNING');self.batch.report(id,code,item['summary'],'SERVER_FAILED',safe_error(error))
    self.save(id,state,'FAILED' if failures else 'READY')
