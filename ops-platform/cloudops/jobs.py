@@ -163,7 +163,10 @@ class Worker:
   self.store.execute("UPDATE nhn_iam SET status='CHECK_REQUIRED' WHERE status='RUNNING'")
   last=0
   while not self.stop.is_set():
-   if self.run_one():continue
+   if self.run_one():
+    # Wait a full quiet interval after completed work; slow refreshes must not
+    # immediately occupy every connection again and starve operator actions.
+    last=time.time();continue
    if time.time()-last>=120:
     last=time.time();admin=self.store.one("SELECT id FROM users WHERE active=1 AND role='ADMIN' ORDER BY id LIMIT 1")
     if admin:

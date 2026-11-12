@@ -1,5 +1,5 @@
 import json,unittest
-from unittest.mock import patch
+from unittest.mock import patch,Mock
 import test_nhn_batch as fixture
 
 class ConnectionSyncTests(unittest.TestCase):
@@ -39,5 +39,19 @@ class ConnectionSyncTests(unittest.TestCase):
    self.assertEqual(sync.call_args.args[0]['id'],second['id'])
   self.assertEqual(self.db.one('SELECT status FROM jobs WHERE id=?',(auto,))['status'],'QUEUED')
   self.assertEqual(self.db.one('SELECT status FROM jobs WHERE id=?',(manual,))['status'],'SUCCEEDED')
+
+ def test_slow_refresh_does_not_immediately_schedule_another_cycle(self):
+  worker=self.app.state.worker
+  self.db.execute('UPDATE connections SET last_sync=1')
+  clock=[1000.0];calls=[0]
+  def run_one():
+   calls[0]+=1
+   if calls[0]==2:clock[0]+=130;return True
+   return False
+  worker.stop=Mock();worker.stop.is_set.side_effect=[False,False,False,True]
+  with patch.object(worker,'run_one',side_effect=run_one),patch.object(worker,'enqueue') as enqueue,patch('cloudops.jobs.time.time',side_effect=lambda:clock[0]):
+   worker.loop()
+  self.assertEqual(enqueue.call_count,1)
+  self.assertTrue(enqueue.call_args.args[-1]['automatic'])
 
 if __name__=='__main__':unittest.main()
