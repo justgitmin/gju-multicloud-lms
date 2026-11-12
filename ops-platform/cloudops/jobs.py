@@ -62,13 +62,20 @@ class Worker:
    user=self.store.one('SELECT * FROM users WHERE id=?',(job['actor'],));c=self.store.one('SELECT * FROM connections WHERE id=?',(job['connection_id'],))
    required=['ADMIN','OPERATOR'] if job['kind'] in ['SYNC','START','STOP'] else ['ADMIN']
    if not user or not user['active'] or user['role'] not in required or not c or c['revision']!=job['revision']:raise providers.CloudError('권한 또는 연결 설정 변경으로 작업을 중단했습니다.')
-   if job['kind'] not in ['SYNC','NHN_PLAN','NHN_SERVER_PLAN'] and not c['writable']:raise providers.CloudError('연결의 변경 권한이 비활성화되어 있습니다.')
+   if job['kind'] not in ['SYNC','NHN_PLAN','NHN_SERVER_PLAN','NHN_IAM_PLAN'] and not c['writable']:raise providers.CloudError('연결의 변경 권한이 비활성화되어 있습니다.')
    secret=self.vault.open(c['secret'],'connection:'+c['id'])
    if job['kind']=='SYNC':self.sync(c,secret);message='동기화 완료'
    elif job['kind'] in ['START','STOP']:
     r=self.store.one('SELECT * FROM resources WHERE id=?',(job['target'],))
     if not r or r['connection_id']!=c['id'] or r['missing'] or not r['event_id']:raise providers.CloudError('교육에 배정된 현재 자원만 제어할 수 있습니다.')
     providers.adapter(c,secret).action(r['remote_id'],job['kind'].lower());message='요청 접수 완료 · 실제 상태는 다음 동기화에서 확인'
+   elif job['kind'] in ['NHN_IAM_PLAN','NHN_IAM_APPLY']:
+    from .nhn_iam import IAM
+    batch=self.store.one('SELECT connection_id FROM nhn_batches WHERE id=?',(job['target'],))
+    if not batch or batch['connection_id']!=c['id'] or c['provider']!='NHN':raise providers.CloudError('IAM 연결 불일치')
+    manager=IAM(self.store,self.vault,self.stop)
+    if job['kind']=='NHN_IAM_PLAN':manager.plan(job['target']);message='IAM 계정 상태·실습 역할 조회 완료 · 실제 변경 없음'
+    else:manager.apply(job['target']);message='IAM 실습 역할 검증 완료 · 비밀번호·기존 접속 정보 유지'
    elif job['kind'] in ['NHN_PLAN','NHN_ENABLE','NHN_APPLY','NHN_CLEANUP','NHN_SERVER_PLAN','NHN_SERVERS','NHN_IPS']:
     from .nhn_batch import Batch
     batch=self.store.one('SELECT connection_id FROM nhn_batches WHERE id=?',(job['target'],))
@@ -80,6 +87,9 @@ class Worker:
      if job['kind']=='NHN_SERVER_PLAN':servers.plan(job['target']);message='서버 준비 계획 조회 완료 · 실제 생성 없음'
      elif job['kind']=='NHN_IPS':servers.repair_ips(job['target']);message='기존 학생 서버 플로팅 IP 일괄 할당·연결 확인 완료'
      else:
+      if json.loads(job['payload']).get('prepare_iam'):
+       from .nhn_iam import IAM
+       iam=IAM(self.store,self.vault,self.stop);iam.plan(job['target']);iam.apply(job['target'])
       servers.apply(job['target'])
       current=self.store.one('SELECT state FROM nhn_batches WHERE id=?',(job['target'],))['state']
       if not current or not any(x.get('journal') for x in self.vault.open(current,'nhn-state:'+job['target']).values()):manager.plan(job['target'])
@@ -99,6 +109,7 @@ class Worker:
   return True
  def loop(self):
   self.store.execute("UPDATE jobs SET status='INTERRUPTED',message='서버 재시작으로 중단됨. 클라우드 상태 확인 후 수동 재요청하세요.',updated=? WHERE status='RUNNING'",(time.time(),))
+  self.store.execute("UPDATE nhn_iam SET status='CHECK_REQUIRED' WHERE status='RUNNING'")
   last=0
   while not self.stop.is_set():
    if self.run_one():continue

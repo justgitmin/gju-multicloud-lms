@@ -42,8 +42,8 @@ def create_app(settings=None,start_worker=True):
   c=store.one('SELECT * FROM connections WHERE id=?',(id,))
   if not c:raise HTTPException(404,'연결을 찾을 수 없습니다.')
   return c
- def queue(actor,c,kind,target):
-  try:return worker.enqueue(actor['id'],c,kind,target)
+ def queue(actor,c,kind,target,payload=None):
+  try:return worker.enqueue(actor['id'],c,kind,target,payload)
   except sqlite3.IntegrityError:raise HTTPException(409,'이 연결에 실행 중인 작업이 있습니다. 완료 후 다시 요청하세요.')
  @app.middleware('http')
  async def protect(request,call_next):
@@ -94,7 +94,10 @@ def create_app(settings=None,start_worker=True):
    if len(matches)==1:
     code,name=next(iter(matches))
     if resource['owner']==code:resource['owner_display']=code+' · '+name
-  context={'user':actor,'csrf':csrf(actor),'connections':connections,'resources':resources,'nhn_batches':[{**b,'options':json.loads(b['config']),'bootstrap':store.one('SELECT status FROM nhn_bootstrap WHERE batch_id=?',(b['id'],)),'people':json.loads((store.one('SELECT config FROM nhn_bootstrap WHERE batch_id=?',(b['id'],)) or {'config':'{}'})['config']).get('roster',{}),'items':[{**i,'details':json.loads(i['summary'])} for i in store.all('SELECT student,summary,status,message FROM nhn_items WHERE batch_id=? ORDER BY student',(b['id'],))]} for b in store.all('SELECT id,name,config,planned FROM nhn_batches ORDER BY created DESC')] if actor['role']=='ADMIN' else [],'events':store.all('SELECT * FROM events ORDER BY created DESC'),'environments':store.all('SELECT e.id,e.lab_id,e.connection_id,e.config,c.name connection_name FROM environments e JOIN connections c ON c.id=e.connection_id ORDER BY e.created DESC'),'jobs':store.all('SELECT j.id,j.kind,j.target,j.status,j.message,j.updated,u.email FROM jobs j JOIN users u ON u.id=j.actor ORDER BY created DESC LIMIT 50'),'audits':store.all('SELECT * FROM audits ORDER BY id DESC LIMIT 50') if actor['role']=='ADMIN' else [],'users':store.all('SELECT id,email,name,role,active FROM users ORDER BY id') if actor['role']=='ADMIN' else []}
+  context={'user':actor,'csrf':csrf(actor),'connections':connections,'resources':resources,'nhn_batches':[{**b,'options':json.loads(b['config']),'bootstrap':store.one('SELECT status FROM nhn_bootstrap WHERE batch_id=?',(b['id'],)),'iam':store.one('SELECT config,status,state,updated FROM nhn_iam WHERE batch_id=?',(b['id'],)),'people':json.loads((store.one('SELECT config FROM nhn_bootstrap WHERE batch_id=?',(b['id'],)) or {'config':'{}'})['config']).get('roster',{}),'items':[{**i,'details':json.loads(i['summary'])} for i in store.all('SELECT student,summary,status,message FROM nhn_items WHERE batch_id=? ORDER BY student',(b['id'],))]} for b in store.all('SELECT id,name,config,planned FROM nhn_batches ORDER BY created DESC')] if actor['role']=='ADMIN' else [],'events':store.all('SELECT * FROM events ORDER BY created DESC'),'environments':store.all('SELECT e.id,e.lab_id,e.connection_id,e.config,c.name connection_name FROM environments e JOIN connections c ON c.id=e.connection_id ORDER BY e.created DESC'),'jobs':store.all('SELECT j.id,j.kind,j.target,j.status,j.message,j.updated,u.email FROM jobs j JOIN users u ON u.id=j.actor ORDER BY created DESC LIMIT 50'),'audits':store.all('SELECT * FROM audits ORDER BY id DESC LIMIT 50') if actor['role']=='ADMIN' else [],'users':store.all('SELECT id,email,name,role,active FROM users ORDER BY id') if actor['role']=='ADMIN' else []}
+  for batch in context['nhn_batches']:
+   if batch['iam']:
+    item=batch['iam'];item['options']=json.loads(item['config']);item['plan']=vault.open(item['state'],'nhn-iam:'+batch['id']) if item['state'] else {}
   return templates.TemplateResponse(request=request,name='dashboard.html',context=context)
  @app.get('/api/overview')
  def overview(request:Request):
@@ -231,6 +234,34 @@ def create_app(settings=None,start_worker=True):
    state=vault.open(b['state'],'nhn-state:'+id)
    if any(x.get('journal') for x in state.values()):raise HTTPException(409,'생성 기록이 있어 계획을 덮어쓸 수 없습니다. 실패 항목 재시도를 사용하세요.')
   queue(actor,c,kind,id);return redirect('/#nhn-batch-'+id)
+ @app.post('/nhn/batches/{id}/iam')
+ async def nhn_iam_action(request:Request,id:str):
+  actor,d=await form(request,['ADMIN']);b=store.one('SELECT * FROM nhn_batches WHERE id=?',(id,))
+  if not b:raise HTTPException(404,'NHN 계획을 찾을 수 없습니다.')
+  c=connection(b['connection_id']);kind=str(d.get('kind',''))
+  if kind not in ['NHN_IAM_PLAN','NHN_IAM_APPLY']:raise HTTPException(400,'IAM 작업을 선택하세요.')
+  if kind=='NHN_IAM_PLAN':
+   from .nhn_iam import login_url
+   prefix=str(d.get('prefix','')).strip();operator=str(d.get('operator','')).strip();urls={}
+   if not re.fullmatch('[a-z][a-z0-9_-]{1,20}',prefix) or not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',operator):raise HTTPException(400,'IAM ID 접두사와 보호할 운영자 이메일을 확인하세요.')
+   cfg=json.loads(b['config']);orgs={cfg['org']}|{x['org'] for x in cfg.get('project_scopes',[])}
+   try:
+    for line in str(d.get('urls','')).splitlines():
+     if not line.strip():continue
+     org,url=line.strip().split(',',1)
+     if org not in orgs or org in urls:raise ValueError()
+     urls[org]=login_url(url)
+   except (ValueError,providers.CloudError):raise HTTPException(400,'로그인 URL은 조직ID,HTTPS 조직 IAM 주소 형식으로 입력하세요.')
+   try:
+    with store.connect() as db:
+     if db.execute("SELECT id FROM jobs WHERE connection_id=? AND status IN ('QUEUED','RUNNING')",(c['id'],)).fetchone():raise HTTPException(409,'실행 중인 작업 완료 후 조회하세요.')
+     db.execute("INSERT INTO nhn_iam(batch_id,config,updated) VALUES(?,?,?) ON CONFLICT(batch_id) DO UPDATE SET config=excluded.config,state='',status='NEW',updated=excluded.updated",(id,json.dumps({'prefix':prefix,'operator':operator,'urls':urls}),time.time()))
+     db.execute('INSERT INTO jobs VALUES(?,?,?,?,?,?,?,?,?,?,?)',(secrets.token_hex(16),actor['id'],c['id'],c['revision'],kind,id,'{}','QUEUED',time.time(),time.time(),'IAM 조회 대기'))
+   except sqlite3.IntegrityError:raise HTTPException(409,'이미 실행 중인 연결 작업이 있습니다.')
+  else:
+   if not c['writable'] or d.get('confirm')!=b['name'] or not verify_password(str(d.get('password','')),actor['password']):raise HTTPException(403,'변경 허용·작업 이름·Cloud Ops 관리자 비밀번호를 확인하세요.')
+   queue(actor,c,kind,id)
+  store.audit(actor['email'],kind,id);return redirect('/#nhn-batch-'+id)
  @app.post('/nhn/batches/{id}/servers/plan')
  async def nhn_servers_plan(request:Request,id:str):
   actor,d=await form(request,['ADMIN']);b=store.one('SELECT * FROM nhn_batches WHERE id=?',(id,))
@@ -272,7 +303,9 @@ def create_app(settings=None,start_worker=True):
   c=connection(b['connection_id'])
   if not c['writable']:raise HTTPException(400,'변경 작업 허용이 필요합니다.')
   kind='NHN_IPS' if d.get('kind')=='NHN_IPS' else 'NHN_SERVERS'
-  queue(actor,c,kind,id);return redirect('/#nhn-batch-'+id)
+  prepare_iam=d.get('prepare_iam')=='on' and kind=='NHN_SERVERS'
+  if prepare_iam and not store.one('SELECT batch_id FROM nhn_iam WHERE batch_id=?',(id,)):raise HTTPException(409,'먼저 학생 IAM 설정을 저장하고 조회하세요.')
+  queue(actor,c,kind,id,{'prepare_iam':prepare_iam});return redirect('/#nhn-batch-'+id)
  @app.post('/nhn/batches/{id}/servers/student')
  async def nhn_server_student(request:Request,id:str):
   actor,d=await form(request,['ADMIN']);boot=store.one('SELECT * FROM nhn_bootstrap WHERE batch_id=?',(id,));code=str(d.get('student',''))
@@ -308,14 +341,18 @@ def create_app(settings=None,start_worker=True):
   # One consistent snapshot; parallel provisioning keeps updating other students.
   with store.connect() as db:
    db.execute('BEGIN')
-   b=db.execute('SELECT state FROM nhn_batches WHERE id=?',(id,)).fetchone()
+   b=db.execute('SELECT state,config FROM nhn_batches WHERE id=?',(id,)).fetchone()
    boot=db.execute('SELECT state FROM nhn_bootstrap WHERE batch_id=?',(id,)).fetchone()
+   iam=db.execute("SELECT state,status FROM nhn_iam WHERE batch_id=?",(id,)).fetchone()
    rows=db.execute('SELECT student,status FROM nhn_items WHERE batch_id=?',(id,)).fetchall()
   if not b:raise HTTPException(404,'NHN 계획을 찾을 수 없습니다.')
   servers=vault.open(boot['state'],'nhn-servers:'+id).get('students',{}) if boot and boot['state'] else {}
   batch=vault.open(b['state'],'nhn-state:'+id) if b['state'] else {}
   from .student_bundles import build
-  content,manifest=build(servers,batch,{r['student']:r['status'] for r in rows})
+  iam_plan=vault.open(iam['state'],'nhn-iam:'+id) if iam and iam['state'] and iam['status']=='VERIFIED' else {}
+  if iam_plan.get('config')!=json.loads(b['config']):iam_plan={}
+  iam_access={r['student']:{k:r.get(k,'') for k in ['username','login_url','project','project_id']} for r in iam_plan.get('rows',[]) if r['status']=='VERIFIED'}
+  content,manifest=build(servers,batch,{r['student']:r['status'] for r in rows},iam_access)
   if not any(x.get('included') for x in manifest):raise HTTPException(409,'내려받을 준비 완료 서버가 없습니다.')
   store.audit(actor['email'],'NHN_STUDENT_ARCHIVE_DOWNLOAD',id)
   return Response(content,media_type='application/zip',headers={'Content-Disposition':'attachment; filename="nhn-students-individual-zips.zip"'})

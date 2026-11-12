@@ -72,3 +72,32 @@ NHN floating IP labels reject hyphens. The allocator uses a stable 14-character 
 ## Bounded parallel storage and RDS preparation
 
 Object Storage/RDS apply processes at most three students concurrently. Each student owns a deep-copied state and a dedicated API client, keeping credentials/token caches and requests separate. Every mutation checkpoint merges only that student into the latest encrypted batch state under a SQLite BEGIN IMMEDIATE transaction. The encryption/write lock does not cover cloud calls or DB readiness waits. READY students are skipped on retry; pending students do not begin cloud work after shutdown. Server creation and IP repair remain unchanged. Deploy only after existing jobs have ended; an already-running process continues its current execution mode.
+
+### Existing IAM preparation
+
+The separate **학생 IAM 계정·프로젝트 실습 권한** panel creates a read-only
+plan for existing project IAM memberships. Set the education ID prefix and the
+protected operator email. Organization-specific login URLs are optional and must
+be copied from NHN; URLs are never inferred from project names. Student numbers
+follow `project_scopes`, including a second organization's global 11+ numbering.
+
+Apply requires ADMIN, CSRF, writable connection, batch-name confirmation and Ops
+password reauthentication. A fresh preflight must exactly match the encrypted
+plan (maximum age one hour). Only missing unconditional assignments among
+Infrastructure VIEWER, Object Storage Object READER/WRITER, and RDS for MySQL
+VIEWER are added. Unexpected roles, conditions, cross-project memberships,
+missing accounts/memberships and non-`member` account states block the plan.
+Reactivation remains in NHN console; already reactivated accounts need no write.
+No account creation, password reset, email, operator-role or infrastructure
+mutation is performed by this stage. Infrastructure VIEWER has NHN-defined
+exceptions for some services; it is not an absolute read-only policy.
+
+An optional checkbox on server preparation runs the saved IAM check/apply stage
+as part of that explicit request. It requires existing target projects and IAM
+memberships. Mutation intent and per-student read-back verification are saved in
+`nhn_iam` separately from infrastructure journals. Interrupted/failed applications
+must be queried again before retry. Existing ZIPs and credentials stay valid;
+verified IAM login metadata is added only to newly downloaded aggregate ZIPs.
+A previously downloaded ZIP is not changed or invalidated.
+
+API schema: https://docs.nhncloud.com/ko/nhncloud/ko/public-api/framework-api/

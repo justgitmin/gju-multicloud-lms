@@ -48,16 +48,16 @@ class API:
    code=data.get('header',{}).get('resultCode');hint=f' · resultCode={code}' if type(code) is int else ''
    raise CloudError(label+' 응답 실패'+hint+' · 서비스 활성화·권한 확인')
   return data
- def core(self,path,enable=False,body=None):
+ def core(self,path,enable=False,body=None,method=None):
   if not self.token:
    r=self.http.post(AUTH+'/oauth2/token/create',headers={'Authorization':self.basic()},data={'grant_type':'client_credentials'})
    if not r.is_success:raise CloudError('운영자 User Access Key 인증 실패 HTTP '+str(r.status_code))
    data=r.json()
    if data.get('token_type','').lower()!='bearer' or not data.get('access_token'):raise CloudError('운영자 Bearer 토큰 응답 오류')
    self.token=data['access_token']
-  r=self.http.request('POST' if enable or body is not None else 'GET',CORE+path,headers={'x-nhn-authorization':'Bearer '+self.token},**({'json':body} if body is not None else {}))
+  r=self.http.request(method or ('POST' if enable or body is not None else 'GET'),CORE+path,headers={'x-nhn-authorization':'Bearer '+self.token},**({'json':body} if body is not None else {}))
   if enable and r.is_success and r.json().get('header',{}).get('resultCode')==13002:return {'already_enabled':True}
-  label='서비스 활성화' if enable else ('서비스 카탈로그 조회' if path.startswith('/v1/product-uis/') else '조직 프로젝트 목록 조회' if '/organizations/' in path else '프로젝트 서비스 정보 조회')
+  label='IAM 요청' if path.startswith('/v1/iam/') else '서비스 활성화' if enable else ('서비스 카탈로그 조회' if path.startswith('/v1/product-uis/') else '조직 프로젝트 목록 조회' if '/organizations/' in path else '프로젝트 서비스 정보 조회')
   return self.response(r,label)
  def projects(self,org):
   result=[];seen=set()
