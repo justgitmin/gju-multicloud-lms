@@ -20,6 +20,8 @@ class AWSResources(Resources):
     if kind=='database' and not cfg['rds'] or kind=='container' and not cfg['s3']:continue
     rid=key(id,code,kind);saved=cached.get(rid,{})
     row={'id':rid,'environment_id':id,'batch_id':id,'connection_id':c['id'],'event_id':env['event_id'],'student':code,'owner':'','project':cfg['lab_id']+'-'+code,'provider':'AWS','kind':kind,'label':{'server':'서버','database':'DB','container':'Object Storage'}[kind],'name':saved.get('remote_id') or cfg['lab_id']+'-'+code+' · '+kind,'remote_id':saved.get('remote_id',''),'state':saved.get('state','UNCHECKED'),'presence':saved.get('presence',-1),'updated':saved.get('updated'),'owned':True,**json.loads(saved.get('detail','{}'))}
+    person=cfg.get('lms_bindings',{}).get(code,{})
+    if person:row['owner_display']=code+' · '+person.get('name','')+(' · 승인 명단에 없음' if not person.get('active') else '')
     row['actions']=capabilities(row);result.append(row)
   return result
  def observe(self,row,state,presence,detail=None):

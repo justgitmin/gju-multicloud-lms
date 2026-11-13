@@ -28,7 +28,7 @@ class ExportRouteTests(unittest.TestCase):
  login=RouteTests.login
  prepare=RouteTests.prepare
  def test_export_requires_admin_reauthentication_and_is_audited_no_cache(self):
-  env,c=self.prepare();config=dict(CFG,students=['s01']);self.db.execute('UPDATE environments SET config=? WHERE id=?',(json.dumps(config),env['id']))
+  env,c=self.prepare();from roster_fixture import approved_config;config=approved_config(dict(CFG,students=['s01']));self.db.execute('UPDATE environments SET config=? WHERE id=?',(json.dumps(config),env['id']))
   path='/environments/'+env['id']+'/lms-assignment';data={'password':'A-long-test-password!','course_id':'gju-multicloud-2026'}
   self.assertEqual(self.post(path,{**data,'password':'wrong'}).status_code,403)
   with patch('cloudops.aws_student_bundles.people',return_value={'s01':{'email':'one@example.com'}}):

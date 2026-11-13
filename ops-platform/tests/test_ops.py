@@ -82,11 +82,13 @@ class PlatformTests(unittest.TestCase):
   args,kw=c.http.get.call_args;uri=args[0].removeprefix('https://ncloud.apigw.ntruss.com');expected=base64.b64encode(hmac.new(b'secret',f'GET {uri}\n123000\naccess'.encode(),hashlib.sha256).digest()).decode();self.assertEqual(kw['headers']['x-ncp-apigw-signature-v2'],expected)
  def test_aws_secret_checkpoint_is_durable_before_mutation(self):
   c=self.connection();event=self.assigned(c);self.post('/environments',{'connection_id':c['id'],'event_id':event['id'],'lab_id':'durable-lab','count':'1','volume':'20','instance':'t3.micro'});env=self.db.one('SELECT * FROM environments')
+  from roster_fixture import approved_config
+  self.db.execute('UPDATE environments SET config=? WHERE id=?',(json.dumps(approved_config(json.loads(env['config']))),env['id']));env=self.db.one('SELECT * FROM environments')
   fake=Path(self.tmp.name)/'fake_lab.py';fake.write_text("import json\ndef save_private(path,value):\n path.parent.mkdir(parents=True,exist_ok=True);path.write_text(json.dumps(value))\ndef load_config(path,deployment=False):return json.loads(path.read_text())\ndef deploy(config,state):\n save_private(state/'student'/'credentials.json',{'password':'only-in-encrypted-vault'});aws(config,'cloudformation','create-stack')\ndef destroy(config):pass\n")
   worker=self.app.state.worker;worker.runner=fake
   def run(*args,**kwargs):
    stored=self.db.one('SELECT state FROM environments WHERE id=?',(env['id'],))['state'];files=self.vault.open(stored,'state:'+env['id']);self.assertIn('student/credentials.json',files);self.assertNotIn('OPS_MASTER_KEY',kwargs['env']);return Mock(returncode=0,stdout='{}')
-  with patch('cloudops.jobs.providers.AWS') as aws,patch('cloudops.jobs.subprocess.run',side_effect=run):worker.aws_lab(c,{'access_key':'test','secret_key':'test'},{'id':'job-test','target':env['id'],'kind':'PROVISION'})
+  with patch('cloudops.jobs.providers.AWS') as aws,patch('cloudops.jobs.subprocess.run',side_effect=run):worker.aws_lab(c,{'access_key':'test','secret_key':'test'},{'id':'job-test','target':env['id'],'kind':'PROVISION','payload':json.dumps({'roster_revision':json.loads(env['config'])['lms_roster']['revision']})})
   self.assertNotIn('only-in-encrypted-vault',Path(self.tmp.name,'ops.sqlite3').read_bytes().decode(errors='ignore'))
  def test_restart_marks_running_job_interrupted(self):
   c=self.connection();self.post('/connections/'+c['id']+'/sync');self.db.execute("UPDATE jobs SET status='RUNNING'");worker=self.app.state.worker;worker.stop.set();worker.loop();self.assertEqual(self.db.one('SELECT status FROM jobs')['status'],'INTERRUPTED')

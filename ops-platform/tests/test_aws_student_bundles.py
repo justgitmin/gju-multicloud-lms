@@ -34,7 +34,7 @@ class RouteTests(unittest.TestCase):
  assigned=fixture.PlatformTests.assigned
  login=fixture.PlatformTests.login
  def prepare(self):
-  c=self.connection();event=self.assigned(c);self.post('/environments',{'connection_id':c['id'],'event_id':event['id'],'lab_id':CFG['lab_id'],'count':'14','volume':'20','instance':'t3.micro','s3':'on','rds':'on'});env=self.db.one('SELECT * FROM environments');self.db.execute('UPDATE environments SET state=?',(self.vault.seal(files('s01'),'state:'+env['id']),));return env,c
+  c=self.connection();event=self.assigned(c);self.post('/environments',{'connection_id':c['id'],'event_id':event['id'],'lab_id':CFG['lab_id'],'count':'14','volume':'20','instance':'t3.micro','s3':'on','rds':'on'});env=self.db.one('SELECT * FROM environments');from roster_fixture import approved_config;self.db.execute('UPDATE environments SET config=? WHERE id=?',(json.dumps(approved_config(json.loads(env['config']))),env['id']));env=self.db.one('SELECT * FROM environments');self.db.execute('UPDATE environments SET state=?',(self.vault.seal(files('s01'),'state:'+env['id']),));return env,c
  def test_archive_and_single_require_admin_reauth_and_no_cache(self):
   env,_=self.prepare();path='/environments/'+env['id']+'/students/archive'
   self.assertEqual(self.post(path,{'password':'wrong'}).status_code,403)
@@ -44,7 +44,7 @@ class RouteTests(unittest.TestCase):
  def test_new_student_subset_can_follow_pilot_but_existing_credentials_cannot_be_overwritten(self):
   env,c=self.prepare();path='/environments/'+env['id']+'/action';data={'kind':'PROVISION','confirm':env['lab_id'],'account':c['account']}
   self.assertEqual(self.post(path,{**data,'students':'s01'}).status_code,409);self.assertEqual(self.post(path,{**data,'students':'s99'}).status_code,400)
-  r=self.post(path,{**data,'students':['s02','s03']});self.assertEqual(r.status_code,303);self.assertEqual(json.loads(self.db.one('SELECT payload FROM jobs')['payload']),{'students':['s02','s03']})
+  r=self.post(path,{**data,'students':['s02','s03']});self.assertEqual(r.status_code,303);self.assertEqual(json.loads(self.db.one('SELECT payload FROM jobs')['payload']),{'students':['s02','s03'],'roster_revision':json.loads(env['config'])['lms_roster']['revision']})
  def test_readonly_check_uses_remaining_students_without_writable_or_creation(self):
   env,c=self.prepare();self.db.execute('UPDATE connections SET writable=0')
   r=self.post('/environments/'+env['id']+'/action',{'kind':'AWS_CHECK'});self.assertEqual(r.status_code,303)
@@ -55,7 +55,7 @@ class RouteTests(unittest.TestCase):
  def test_worker_uses_selected_students_and_preserves_pilot_state(self):
   env,c=self.prepare();fake=Path(self.tmp.name)/'selected_lab.py';fake.write_text("import json\ndef save_private(path,value):\n path.parent.mkdir(parents=True,exist_ok=True);path.write_text(json.dumps(value))\ndef load_config(path,deployment=False):return json.loads(path.read_text())\ndef deploy(config,state):\n assert config['students']==['s02']\n save_private(state/(config['lab_id']+'-s02')/'credentials.json',{'new':'student-two'})\n aws(config,'cloudformation','create-stack')\ndef destroy(config):pass\n")
   worker=self.app.state.worker;worker.runner=fake
-  with patch('cloudops.jobs.providers.AWS'),patch('cloudops.jobs.subprocess.run',return_value=Mock(returncode=0,stdout='{}')):worker.aws_lab(c,{}, {'id':'selected','target':env['id'],'kind':'PROVISION','payload':json.dumps({'students':['s02']})})
+  with patch('cloudops.jobs.providers.AWS'),patch('cloudops.jobs.subprocess.run',return_value=Mock(returncode=0,stdout='{}')):worker.aws_lab(c,{}, {'id':'selected','target':env['id'],'kind':'PROVISION','payload':json.dumps({'students':['s02'],'roster_revision':json.loads(env['config'])['lms_roster']['revision']})})
   saved=self.vault.open(self.db.one('SELECT state FROM environments')['state'],'state:'+env['id']);self.assertEqual(saved[env['lab_id']+'-s01/credentials.json'],files('s01')[env['lab_id']+'-s01/credentials.json']);self.assertIn(env['lab_id']+'-s02/credentials.json',saved)
 
 if __name__=='__main__':unittest.main()
