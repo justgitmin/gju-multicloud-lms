@@ -57,10 +57,17 @@ function filterResourceRows(){
  const root=document.querySelector('#resources');if(!root)return;
  const cloud=root.querySelector('[data-cloud-filter][aria-pressed=true]')?.dataset.cloudFilter||'all';
  const kind=root.querySelector('[data-resource-kind]')?.value||'all',event=root.querySelector('[data-resource-event]')?.value||'all',search=(root.querySelector('[data-resource-search]')?.value||'').trim().toLowerCase();
+ const totals={all:0,server:0,database:0,container:0,related:0},visible={all:0,confirmed:0,absent:0,unknown:0};
  for(const row of root.querySelectorAll('[data-selection-row]')){
-  row.hidden=(cloud!=='all'&&row.dataset.cloudRow!==cloud)||(kind!=='all'&&(kind==='related'?['server','database','container'].includes(row.dataset.kind):row.dataset.kind!==kind))||(event!=='all'&&row.dataset.event!==event)||!(row.dataset.search||'').toLowerCase().includes(search);
+  const matches=(cloud==='all'||row.dataset.cloudRow===cloud)&&(event==='all'||row.dataset.event===event)&&(row.dataset.search||'').toLowerCase().includes(search);
+  const category=['server','database','container'].includes(row.dataset.kind)?row.dataset.kind:'related';
+  if(matches&&row.dataset.presence==='1'){totals.all++;totals[category]++;}
+  row.hidden=!matches||(kind!=='all'&&(kind==='related'?category!=='related':row.dataset.kind!==kind));
+  if(!row.hidden){visible.all++;visible[row.dataset.presence==='1'?'confirmed':row.dataset.presence==='0'?'absent':'unknown']++;}
   const input=row.querySelector('[data-resource-select]');if(row.hidden&&input)input.checked=false;
  }
+ for(const field of root.querySelectorAll('[data-resource-count]'))field.textContent=String(totals[field.dataset.resourceCount]||0);
+ for(const [key,selector] of Object.entries({all:'[data-resource-visible]',confirmed:'[data-resource-visible-confirmed]',absent:'[data-resource-visible-absent]',unknown:'[data-resource-visible-unknown]'})){const field=root.querySelector(selector);if(field)field.textContent=String(visible[key]);}
  updateSelection();
 }
 function updateSelection(){

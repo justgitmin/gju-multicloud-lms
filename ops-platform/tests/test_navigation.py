@@ -26,6 +26,13 @@ class NavigationTests(unittest.TestCase):
   self.assertEqual({d['data-vendor-panel'] for _,d,_ in s.elements if 'data-vendor-panel' in d},{'AWS','NHN','NCP'})
   self.assertIn('교육 환경 일괄 생성·삭제는 아직 지원하지 않습니다.',page)
   self.assertIn('href="/attendance"',page)
+ def test_resource_counts_are_available_without_action_permissions(self):
+  self.db.execute("UPDATE users SET role='VIEWER'")
+  page=self.client.get('/').text;s=Structure();s.feed(page)
+  self.assertEqual({d['data-resource-count'] for _,d,_ in s.elements if 'data-resource-count' in d},{'all','server','database','container','related'})
+  self.assertIn('data-resource-visible-confirmed',page)
+  self.assertIn('data-resource-visible-unknown',page)
+  self.assertNotIn('id="selected-count"',page)
  def test_viewer_has_no_provision_or_admin_panels(self):
   self.db.execute("UPDATE users SET role='VIEWER'");page=self.client.get('/').text;s=Structure();s.feed(page)
   self.assertFalse({'prepare','users','audit'}&{d.get('data-view') for _,d,_ in s.elements})
