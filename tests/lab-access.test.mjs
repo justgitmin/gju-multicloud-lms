@@ -65,3 +65,15 @@ test('import refuses reassignment of an AWS identity already owned by another st
  const importer=loadTs('lib/lab-import.ts',{'@prisma/client':{Prisma:{TransactionIsolationLevel:{Serializable:'Serializable'}}},'./db':{db:{$transaction:async fn=>fn(tx)}},'./lab-secrets.mjs':{validateLabBatch,encryptLab,labAad,labKey:()=>labKey(key)}});
  await assert.rejects(()=>importer.importLabBatch(batch(),'operator'),/다른 학생/);assert.equal(writes,0);
 });
+
+test('stable LMS identities survive validation and never enter public or secret fields',()=>{
+ const b=batch();b.entries[0]={...b.entries[0],userId:'student-id',enrollmentId:'enrollment-id'};
+ const value=validateLabBatch(b).entries[0];assert.equal(value.userId,'student-id');assert.equal(value.enrollmentId,'enrollment-id');assert.equal(value.publicData.userId,undefined);assert.equal(value.secrets.userId,undefined);
+ b.entries[0].enrollmentId='';assert.throws(()=>validateLabBatch(b));
+});
+test('import binds stable user and enrollment IDs instead of guessing by a changed email',async()=>{
+ let query,writes=0;const tx={enrollment:{findFirst:async args=>{query=args.where;return null}},labAccess:{upsert:async()=>{writes++}}};
+ const importer=loadTs('lib/lab-import.ts',{'@prisma/client':{Prisma:{TransactionIsolationLevel:{Serializable:'Serializable'}}},'./db':{db:{$transaction:async fn=>fn(tx)}},'./lab-secrets.mjs':{validateLabBatch,encryptLab,labAad,labKey:()=>labKey(key)}});
+ const b=batch();b.entries[0]={...b.entries[0],userId:'student-id',enrollmentId:'enrollment-id'};
+ await assert.rejects(()=>importer.importLabBatch(b,'operator'));assert.equal(query.id,'enrollment-id');assert.equal(query.user.id,'student-id');assert.equal(query.user.email,undefined);assert.equal(query.status,'APPROVED');assert.equal(writes,0);
+});

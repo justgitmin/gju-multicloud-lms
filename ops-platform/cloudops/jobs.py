@@ -20,7 +20,10 @@ class Worker:
  def aws_lab(self,c,secret,job):
   env=self.store.one('SELECT * FROM environments WHERE id=?',(job['target'],))
   if not env or env['connection_id']!=c['id'] or c['provider']!='AWS':raise providers.CloudError('환경 연결 불일치')
-  config=json.loads(env['config']);selected=json.loads(job.get('payload','{}')).get('students')
+  config=json.loads(env['config']);payload=json.loads(job.get('payload','{}'));selected=payload.get('students')
+  if job['kind']=='PROVISION':
+   from .lms_roster import require_generation
+   require_generation(config,selected or config['students'],payload.get('roster_revision',''))
   if selected is not None:
    if not isinstance(selected,list) or not selected or len(selected)!=len(set(selected)) or any(code not in config['students'] for code in selected):raise providers.CloudError('AWS 선택 학생이 계획과 일치하지 않습니다.')
    config['students']=selected
@@ -55,6 +58,10 @@ class Worker:
     validated=lab.load_config(cfg,deployment=action=='apply')
     if action=='apply':lab.deploy(validated,state)
     elif action=='check':
+     from .lms_roster import approved_people
+     approved=approved_people(config)
+     if not approved:raise providers.CloudError('먼저 LMS 승인 명단을 대조·확정하세요.')
+     validated['students']=[code for code in validated['students'] if code in approved]
      validated['students']=[code for code in validated['students'] if not (state/(validated['lab_id']+'-'+code)).exists()]
      lab.preflight(validated)
     else:lab.destroy(validated)

@@ -7,7 +7,8 @@ export async function importLabBatch(raw:unknown,actorId:string,tokenId?:string)
   if(tokenId){const consumed=await tx.labTransferToken.updateMany({where:{id:tokenId,adminId:actorId,consumedAt:null,expiresAt:{gt:new Date()}},data:{consumedAt:new Date()}});if(consumed.count!==1)throw new Error('전송 토큰이 만료되었거나 이미 사용되었습니다.');}
   const summary=[];
   for(const entry of batch.entries){
-   const enrollment=await tx.enrollment.findFirst({where:{courseId:batch.courseId,status:'APPROVED',course:{published:true},user:{email:entry.email,role:'STUDENT'}},include:{user:{select:{name:true,email:true,studentNumber:true}}}});
+   const enrollment=await tx.enrollment.findFirst({where:{courseId:batch.courseId,status:'APPROVED',course:{published:true},...(entry.userId?{id:entry.enrollmentId}:{}),user:{...(entry.userId?{id:entry.userId}:{email:entry.email}),role:'STUDENT'}},include:{user:{select:{id:true,name:true,email:true,studentNumber:true}}}});
+   if(enrollment&&entry.userId&&enrollment.user.email.toLowerCase()!==entry.email)throw new Error('학생 이메일이 변경되었습니다. 최신 승인 명단으로 다시 대조하세요.');
    if(!enrollment)throw new Error(`${entry.email}: 해당 과정의 승인된 학생 계정을 먼저 준비하세요.`);
    const existing=await tx.labAccess.findUnique({where:{accountId_labId_studentCode:{accountId:entry.accountId,labId:entry.labId,studentCode:entry.studentCode}}});
    if(existing&&existing.enrollmentId!==enrollment.id)throw new Error('이미 다른 학생에게 연결된 AWS 계정입니다. 먼저 기존 배정을 확인하세요.');

@@ -18,12 +18,21 @@ try{
  app=spawn(process.execPath,['node_modules/next/dist/bin/next','start','-p','3301','-H','127.0.0.1'],{env:{...process.env,APP_ORIGIN:origin,LAB_CREDENTIALS_KEY:randomBytes(32).toString('base64'),NEXT_TELEMETRY_DISABLED:'1'},stdio:['ignore','ignore','pipe']});app.stderr.on('data',()=>{});
  let ready=false;for(let i=0;i<100;i++){try{if((await fetch(base+'/api/health')).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,100));}check(ready,'Lab test HTTP process starts');
  async function post(url,data,cookie='',token='',extra={}){return fetch(base+url,{method:'POST',headers:{'Content-Type':'application/json','x-forwarded-proto':'https',origin,...(cookie?{cookie}:{}),...(token?{authorization:'Bearer '+token}:{}),...extra},body:JSON.stringify(data)});}
+ let rr=await post('/api/admin/lab-roster',{password,courseId:course.id},ownerCookie);check(rr.status===403,'Student cannot export approval roster');
+ rr=await post('/api/admin/lab-roster',{password:'wrong',courseId:course.id},adminCookie);check(rr.status===400,'Roster export requires admin password');
+ const thirdEnrollment=await db.enrollment.findUnique({where:{userId_courseId:{userId:third.id,courseId:course.id}}});
+ await db.enrollment.update({where:{id:thirdEnrollment.id},data:{status:'PENDING'}});
+ rr=await post('/api/admin/lab-roster',{password,courseId:course.id},adminCookie);const roster=await rr.json();check(rr.ok&&roster.students.length===2&&!roster.students.some(p=>p.userId===third.id)&&roster.students.some(p=>p.userId===owner.id),'Roster contains stable IDs for approved students only');check(/no-store/.test(rr.headers.get('cache-control')),'Roster export disables caching');
+ await db.enrollment.update({where:{id:thirdEnrollment.id},data:{status:'APPROVED'}});
  const labId='test-'+suffix;
  const make=(user,code)=>({email:user.email,labId,studentCode:code,accountId:'123456789012',region:'ap-northeast-2',username:labId+'-'+code,instanceId:'i-'+randomBytes(8).toString('hex'),sessionDocument:labId+'-shell',initialPassword:'Initial9!'+randomBytes(12).toString('hex')});
  const first=make(owner,'s01'),second=make(other,'s02');
  let r=await post('/api/admin/lab-token',{password},ownerCookie);check(r.status===403,'Student cannot mint operator transfer token');
  r=await post('/api/admin/lab-token',{password},adminCookie);let payload=await r.json();check(r.ok&&payload.token?.length===64,'Admin reauthentication mints short-lived transfer token');const token=payload.token;
  r=await post('/api/admin/lab-import',{batch:{version:1,courseId:course.id,entries:[first,second]}},'',token);check(r.ok&&(await r.json()).count===2,'Operator batch connects approved exact-email students');
+ const ownerEnrollment=await db.enrollment.findUnique({where:{userId_courseId:{userId:owner.id,courseId:course.id}}});
+ r=await post('/api/admin/lab-import',{password,batch:{version:1,courseId:course.id,entries:[{...first,userId:owner.id,enrollmentId:ownerEnrollment.id}]}},adminCookie);check(r.ok,'Stable student ID reimport preserves existing assignment');
+ r=await post('/api/admin/lab-import',{password,batch:{version:1,courseId:course.id,entries:[{...first,userId:other.id,enrollmentId:ownerEnrollment.id}]}},adminCookie);check(r.status===400,'Mismatched user and enrollment IDs cannot reassign credentials');
  const assignment=await db.labAccess.findFirst({where:{labId,studentCode:'s01'}});check(assignment&&!assignment.secretData.includes(first.initialPassword),'Database stores ciphertext rather than plaintext password');
  r=await post('/api/admin/lab-import',{batch:{version:1,courseId:course.id,entries:[first]}},'',token);check(r.status===400,'Successful transfer token cannot be replayed');
  r=await fetch(base+'/classroom/lab?course='+course.id,{headers:{cookie:ownerCookie}});check(r.ok&&!(await r.text()).includes(first.initialPassword),'Student page does not embed secrets before reauthentication');

@@ -106,7 +106,11 @@ def create_app(settings=None,start_worker=True):
   for env in context['environments']:
    env['options']=json.loads(env['config'])
    from .aws_student_bundles import people
-   env['people']=people(store,env['event_id'])
+   env['people']={**people(store,env['event_id']),**env['options'].get('lms_bindings',{})}
+   from .lms_roster import plan,proposals
+   saved=store.one('SELECT state FROM environments WHERE id=?',(env['id'],));files=vault.open(saved['state'],'state:'+env['id']) if saved and saved['state'] else {}
+   env['resource_plan']=plan(env['options'],files);env['new_count']=sum(r['approved'] and not r['started'] for r in env['resource_plan']);env['reuse_count']=sum(r['approved'] and r['ready'] for r in env['resource_plan']);env['orphan_count']=sum(not r['approved'] and r['started'] for r in env['resource_plan']) if env['options'].get('lms_roster') else 0
+   env['roster_rows']=proposals(env['options'],env['options']['lms_draft'],people(store,env['event_id']),files) if env['options'].get('lms_draft') else []
   from .resource_ops import Resources,capabilities
   manager=Resources(store,vault,worker.stop);managed=[]
   for b in store.all('SELECT id FROM nhn_batches'):
@@ -278,8 +282,34 @@ def create_app(settings=None,start_worker=True):
    if not selected or len(selected)!=len(set(selected)) or any(code not in config['students'] for code in selected):raise HTTPException(400,'계획에 포함된 학생만 선택하세요.')
    files=vault.open(e['state'],'state:'+id) if e['state'] else {}
    if any(any(path.startswith(e['lab_id']+'-'+code+'/') for path in files) for code in selected):raise HTTPException(409,'선택 학생의 생성 기록이 있습니다. 기존 자료를 덮어쓰지 않습니다. 신규 학생만 선택하세요.')
-   payload={'students':selected}
+   from .lms_roster import require_generation
+   try:roster_revision=require_generation(config,selected)
+   except providers.CloudError as error:raise HTTPException(409,str(error))
+   payload={'students':selected,'roster_revision':roster_revision}
   queue(actor,c,kind,id,payload);return redirect('/#jobs')
+ @app.post('/environments/{id}/approved-roster')
+ async def aws_approved_roster(request:Request,id:str):
+  actor,d=await form(request,['ADMIN'])
+  if not verify_password(str(d.get('password','')),actor['password']):raise HTTPException(403,'Cloud Ops 관리자 비밀번호를 확인하세요.')
+  from .lms_roster import snapshot,approve
+  from .aws_student_bundles import people
+  try:
+   with store.connect() as db:
+    db.execute('BEGIN IMMEDIATE');e=db.execute('SELECT * FROM environments WHERE id=?',(id,)).fetchone()
+    if not e:raise HTTPException(404,'교육 환경을 찾을 수 없습니다.')
+    if db.execute("SELECT id FROM jobs WHERE target=? AND kind IN ('PROVISION','DESTROY') AND status IN ('QUEUED','RUNNING')",(id,)).fetchone():raise HTTPException(409,'생성·삭제 작업이 끝난 뒤 명단을 변경하세요.')
+    config=json.loads(e['config']);action=str(d.get('action','preview'))
+    if action=='preview':config['lms_draft']=snapshot(str(d.get('roster_json','')))
+    elif action=='approve':
+     if d.get('ack')!='on' or not config.get('lms_draft'):raise HTTPException(400,'명단 대조와 확인 체크가 필요합니다.')
+     ids=d.getlist('include')
+     if len(ids)!=len(set(ids)):raise HTTPException(400,'중복 학생을 선택했습니다.')
+     mappings={uid:str(d.get('code_'+uid,'')) for uid in ids};files=vault.open(e['state'],'state:'+id) if e['state'] else {}
+     config=approve(config,config['lms_draft'],mappings,people(store,e['event_id']),files)
+    else:raise HTTPException(400,'명단 작업을 확인하세요.')
+    db.execute('UPDATE environments SET config=? WHERE id=?',(json.dumps(config,ensure_ascii=False),id))
+  except providers.CloudError as error:raise HTTPException(409,str(error))
+  store.audit(actor['email'],'AWS_LMS_ROSTER_'+action.upper(),id);return redirect('/#aws-environment-'+id)
  @app.post('/environments/{id}/student')
  async def student_download(request:Request,id:str):
   actor,d=await form(request,['ADMIN']);e=store.one('SELECT * FROM environments WHERE id=?',(id,));student=str(d.get('student',''))
@@ -307,7 +337,14 @@ def create_app(settings=None,start_worker=True):
   if not e or not e['state']:raise HTTPException(409,'아직 내려받을 AWS 생성 기록이 없습니다.')
   if store.one("SELECT id FROM jobs WHERE target=? AND kind IN ('PROVISION','DESTROY') AND status IN ('QUEUED','RUNNING')",(id,)):raise HTTPException(409,'AWS 생성·삭제 작업이 끝난 뒤 내려받으세요.')
   from .aws_student_bundles import lms_batch,people
-  try:batch=lms_batch(json.loads(e['config']),connection(e['connection_id'])['account'],vault.open(e['state'],'state:'+id),people(store,e['event_id']),str(d.get('course_id','')))
+  try:
+   from .lms_roster import approved_people
+   config=json.loads(e['config']);roster=approved_people(config)
+   if not roster:raise providers.CloudError('먼저 LMS 승인 명단 대조를 확정하세요.')
+   if str(d.get('course_id',''))!=config['lms_roster']['courseId']:raise providers.CloudError('확정된 승인 명단의 LMS 과정 ID와 다릅니다.')
+   batch=lms_batch({**config,'students':[code for code in config['students'] if code in roster]},connection(e['connection_id'])['account'],vault.open(e['state'],'state:'+id),roster,str(d.get('course_id','')))
+   for entry in batch['entries']:
+    person=roster[entry['studentCode']];entry.update(userId=person['userId'],enrollmentId=person['enrollmentId'])
   except providers.CloudError as error:raise HTTPException(409,str(error))
   store.audit(actor['email'],'AWS_LMS_ASSIGNMENT_EXPORT',id,'students='+str(len(batch['entries'])))
   return Response(json.dumps(batch,ensure_ascii=False,indent=2),media_type='application/json',headers={'Content-Disposition':'attachment; filename="aws-lms-assignment.json"','Cache-Control':'no-store','Pragma':'no-cache'})

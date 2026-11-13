@@ -103,3 +103,5 @@ function renderConnectionStates(connections){
   if(button)button.disabled=['QUEUED','RUNNING'].includes(connection.sync_job?.status);
  }
 }
+
+for(const input of document.querySelectorAll('[data-lms-roster-file]'))input.addEventListener('change',async()=>{const form=input.closest('form'),field=form.querySelector('[data-lms-roster-json]'),message=form.querySelector('[data-lms-roster-message]');field.value='';input.setCustomValidity('');try{const file=input.files?.[0];if(!file)return;if(file.size>90000)throw Error('명단 파일은 90KB 이하여야 합니다.');const raw=await file.text(),data=JSON.parse(raw);if(data.kind!=='approved-enrollments'||!Array.isArray(data.students))throw Error('LMS 승인 학생 명단 파일을 선택하세요.');field.value=JSON.stringify(data);message.textContent=data.students.length+'명 명단 선택 · 서버에서 검증 후 대조합니다.';}catch(error){message.textContent=error.message||'파일 형식 확인 필요';input.setCustomValidity(message.textContent);}});
