@@ -299,6 +299,18 @@ def create_app(settings=None,start_worker=True):
   if not any(x['included'] for x in manifest):raise HTTPException(409,'생성 완료한 학생의 출력 자료가 아직 없습니다.')
   store.audit(actor['email'],'AWS_STUDENT_ARCHIVE_DOWNLOAD',id)
   return Response(content,media_type='application/zip',headers={'Content-Disposition':'attachment; filename="aws-students-individual-zips.zip"'})
+ @app.post('/environments/{id}/lms-assignment')
+ async def aws_lms_assignment(request:Request,id:str):
+  actor,d=await form(request,['ADMIN'])
+  if not verify_password(str(d.get('password','')),actor['password']):raise HTTPException(403,'Cloud Ops 관리자 비밀번호를 확인하세요.')
+  e=store.one('SELECT * FROM environments WHERE id=?',(id,))
+  if not e or not e['state']:raise HTTPException(409,'아직 내려받을 AWS 생성 기록이 없습니다.')
+  if store.one("SELECT id FROM jobs WHERE target=? AND kind IN ('PROVISION','DESTROY') AND status IN ('QUEUED','RUNNING')",(id,)):raise HTTPException(409,'AWS 생성·삭제 작업이 끝난 뒤 내려받으세요.')
+  from .aws_student_bundles import lms_batch,people
+  try:batch=lms_batch(json.loads(e['config']),connection(e['connection_id'])['account'],vault.open(e['state'],'state:'+id),people(store,e['event_id']),str(d.get('course_id','')))
+  except providers.CloudError as error:raise HTTPException(409,str(error))
+  store.audit(actor['email'],'AWS_LMS_ASSIGNMENT_EXPORT',id,'students='+str(len(batch['entries'])))
+  return Response(json.dumps(batch,ensure_ascii=False,indent=2),media_type='application/json',headers={'Content-Disposition':'attachment; filename="aws-lms-assignment.json"','Cache-Control':'no-store','Pragma':'no-cache'})
  @app.post('/nhn/batches')
  async def nhn_batch_create(request:Request):
   actor,d=await form(request,['ADMIN']);c=connection(str(d.get('connection_id','')));event=str(d.get('event_id',''));name=str(d.get('name','')).strip()

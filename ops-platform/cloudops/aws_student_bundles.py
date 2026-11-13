@@ -73,3 +73,25 @@ def archive(config,account,files,roster):
    name=re.sub(r'[^\w가-힣-]','_',access['name'])[:50];filename=code+'_'+name+'.zip';outer.writestr(filename,data);manifest.append({'student':code,'name':access['name'],'included':True,'file':filename})
   outer.writestr('운영자_전달목록.json',json.dumps(manifest,ensure_ascii=False,indent=2));outer.writestr('운영자_읽어주세요.txt','\ufeff전체 ZIP은 운영자만 보관하세요. 내부 학생별 ZIP만 해당 학생에게 개별 전달합니다.\n출력 미완료·식별 불일치 자료는 제외하며 운영자 AWS 키는 포함하지 않습니다.\n')
  return output.getvalue(),manifest
+
+
+def lms_batch(config,account,files,roster,course_id):
+ """Export only the LMS import schema; require a complete, unambiguous roster."""
+ if not isinstance(course_id,str) or not course_id.strip() or len(course_id)>100 or any(ord(c)<32 for c in course_id):raise CloudError('LMS 관리자 화면의 과정 ID를 입력하세요.')
+ if config.get('region')!='ap-northeast-2' or not re.fullmatch(r'[0-9]{12}',account):raise CloudError('LMS 배정은 서울 리전의 유효한 AWS 연결만 지원합니다.')
+ entries=[];emails=set()
+ for code in config['students']:
+  person=roster.get(code,{})
+  email=str(person.get('email','')).strip().lower()
+  if not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email) or len(email)>254 or email in emails:raise CloudError(code+': LMS 이메일 누락·중복·명단 충돌을 확인하세요.')
+  emails.add(email)
+  try:_,a=kit(config,account,files,code,person)
+  except CloudError as error:raise CloudError(code+': '+str(error)) from None
+  entry={'email':email,'labId':a['lab_id'],'studentCode':code,'region':a['region'],'accountId':a['account_id'],'username':a['username'],'instanceId':a['instance_id'],'sessionDocument':a['session_document'],'initialPassword':a['initial_password']}
+  if a.get('bucket'):entry['bucketName']=a['bucket']
+  if a.get('db_host'):
+   if not re.fullmatch(r'[a-z0-9.-]+\.ap-northeast-2\.rds\.amazonaws\.com',a['db_host']):raise CloudError(code+': LMS용 DB 주소 형식을 확인하세요.')
+   entry.update(dbEndpoint=a['db_host'],dbPassword=a['db_password'])
+  entries.append(entry)
+ if not entries:raise CloudError('배정할 학생이 없습니다.')
+ return {'version':1,'courseId':course_id.strip(),'entries':entries}
