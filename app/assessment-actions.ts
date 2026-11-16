@@ -31,11 +31,13 @@ export async function submitQuiz(form:FormData){
 }
 export async function reviewLab(form:FormData){
  const admin=await requireAdmin();const id=text(form,'submissionId');const status=text(form,'status');const feedback=text(form,'feedback').trim();
- if((status!=='APPROVED'&&status!=='REVISION')||feedback.length>3000||(status==='REVISION'&&!feedback))redirect('/admin/learning?error=feedback');
- const updatedAt=new Date(text(form,'updatedAt'));if(!Number.isFinite(updatedAt.getTime()))redirect('/admin/learning?error=stale');
- const submission=await db.submission.findUniqueOrThrow({where:{id},include:{lab:true}});
- const changed=await db.submission.updateMany({where:{id,updatedAt},data:{status,feedback,reviewedBy:admin.id,reviewedAt:new Date()}});
- if(changed.count!==1)redirect('/admin/learning?error=stale');
+ if((status!=='APPROVED'&&status!=='REVISION')||feedback.length>3000||(status==='REVISION'&&!feedback))return {error:'보완 요청에는 피드백을 입력하세요. 피드백은 3,000자 이내입니다.'};
+ const updatedAt=new Date(text(form,'updatedAt'));if(!Number.isFinite(updatedAt.getTime()))return {error:'제출물이 변경되었습니다. 새로고침 후 다시 검토하세요.'};
+ const submission=await db.submission.findUnique({where:{id},include:{lab:true}});
+ if(!submission)return {error:'제출물을 찾을 수 없습니다. 새로고침 후 확인하세요.'};
+ const reviewedAt=new Date();
+ const changed=await db.submission.updateMany({where:{id,updatedAt},data:{status,feedback,reviewedBy:admin.id,reviewedAt,updatedAt:reviewedAt}});
+ if(changed.count!==1)return {error:'제출물이 변경되었습니다. 새로고침 후 다시 검토하세요.'};
  revalidatePath('/admin/learning');revalidatePath(`/course/${submission.lab.courseId}`);revalidatePath('/classroom');
- redirect(`/admin/learning?reviewed=${encodeURIComponent(id)}#submission-${encodeURIComponent(id)}`);
+ return {status,updatedAt:reviewedAt.toISOString()};
 }
