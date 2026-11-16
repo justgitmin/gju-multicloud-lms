@@ -36,5 +36,6 @@ export async function reviewLab(form:FormData){
  const submission=await db.submission.findUniqueOrThrow({where:{id},include:{lab:true}});
  const changed=await db.submission.updateMany({where:{id,updatedAt},data:{status,feedback,reviewedBy:admin.id,reviewedAt:new Date()}});
  if(changed.count!==1)redirect('/admin/learning?error=stale');
- revalidatePath('/admin/learning');revalidatePath(`/course/${submission.lab.courseId}`);
+ revalidatePath('/admin/learning');revalidatePath(`/course/${submission.lab.courseId}`);revalidatePath('/classroom');
+ redirect(`/admin/learning?reviewed=${encodeURIComponent(id)}#submission-${encodeURIComponent(id)}`);
 }
