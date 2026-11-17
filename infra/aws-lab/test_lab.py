@@ -128,6 +128,36 @@ class LabTests(unittest.TestCase):
         actions=role['Properties']['Policies'][0]['PolicyDocument']['Statement'][0]['Action']
         self.assertNotIn('ssm:GetParameter',actions);self.assertNotIn('ssm:GetParameters',actions)
         self.assertNotIn('s3:GetObject',actions)
+    def test_console_list_permission_in_both_policies(self):
+        r = self.t['Resources']
+        boundary = r['Boundary']['Properties']['PolicyDocument']
+        inline = r['Student']['Properties']['Policies'][0]['PolicyDocument']
+        self.assertEqual(boundary, inline)
+        grants = [x for x in boundary['Statement'] if x.get('Sid') == 'S3ConsoleBucketNames']
+        self.assertEqual(grants, [{'Sid': 'S3ConsoleBucketNames', 'Effect': 'Allow',
+                                  'Action': 's3:ListAllMyBuckets', 'Resource': '*'}])
+
+    def test_node_role_s3_is_own_bucket_and_practice_only(self):
+        self.c['access_mode'] = 'ssm'
+        r = lab.template(self.c, 's01')['Resources']
+        policies = r['NodeRole']['Properties']['Policies']
+        policy = next(x for x in policies if x['PolicyName'] == 'OwnPracticeObjects')
+        statements = policy['PolicyDocument']['Statement']
+        listing = next(x for x in statements if x['Action'] == 's3:ListBucket')
+        self.assertEqual(listing['Resource'], {'Fn::GetAtt': ['Bucket', 'Arn']})
+        self.assertEqual(listing['Condition'], {'StringLike': {'s3:prefix': ['practice/', 'practice/*']}})
+        objects = next(x for x in statements if isinstance(x['Action'], list))
+        self.assertEqual(objects['Action'], ['s3:PutObject', 's3:GetObject'])
+        self.assertEqual(objects['Resource'], {'Fn::Sub': '${Bucket.Arn}/practice/*'})
+        serialized = json.dumps(policies)
+        for forbidden in ['s3:*', 's3:DeleteObject', 's3:ListAllMyBuckets', 'ssm:GetParameter', 'iam:PassRole']:
+            self.assertNotIn(forbidden, serialized)
+
+    def test_node_has_no_s3_policy_when_bucket_disabled(self):
+        self.c.update(access_mode='ssm', s3=False)
+        policies = lab.template(self.c, 's01')['Resources']['NodeRole']['Properties']['Policies']
+        self.assertEqual([x['PolicyName'] for x in policies], ['SessionAgentOnly'])
+
     def test_ssm_document_does_not_override_default(self):
         self.c['access_mode']='ssm';doc=lab.network_template(self.c)['Resources']['SessionDocument']
         self.assertEqual(doc['Properties']['Name'],'gju-2026-shell')
