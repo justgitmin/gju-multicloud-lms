@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 import lab
@@ -16,8 +17,10 @@ class RepairTests(unittest.TestCase):
         self.t['Resources']['Boundary']['Properties']['PolicyDocument']['Statement'] = [
             x for x in self.t['Resources']['Boundary']['Properties']['PolicyDocument']['Statement']
             if x.get('Sid') != 'S3ConsoleBucketNames']
-        self.t['Resources']['Student']['Properties']['Policies'][0]['PolicyDocument'] = copy.deepcopy(
-            self.t['Resources']['Boundary']['Properties']['PolicyDocument'])
+        student = self.t['Resources']['Student']['Properties']
+        student.pop('ManagedPolicyArns')
+        student['Policies'] = [{'PolicyName': 'AssignedLabOnly', 'PolicyDocument': copy.deepcopy(
+            self.t['Resources']['Boundary']['Properties']['PolicyDocument'])}]
         self.t['Resources']['NodeRole']['Properties']['Policies'] = [
             x for x in self.t['Resources']['NodeRole']['Properties']['Policies']
             if x['PolicyName'] != 'OwnPracticeObjects']
@@ -35,14 +38,54 @@ class RepairTests(unittest.TestCase):
         before = self.t['Resources']['Student']['Properties']
         after = result['Resources']['Student']['Properties']
         for key in before:
-            if key != 'Policies':
+            if key not in ['Policies', 'ManagedPolicyArns']:
                 self.assertEqual(before[key], after[key])
+        self.assertEqual(after['ManagedPolicyArns'], [{'Ref': 'Boundary'}])
+        self.assertNotIn('Policies', after)
         self.assertEqual(repair_template(result), result)
 
     def test_refuses_custom_policy_mismatch(self):
         self.t['Resources']['Student']['Properties']['Policies'][0]['PolicyDocument']['Statement'] = []
         with self.assertRaises(ValueError):
             repair_template(self.t)
+
+    def test_preserves_other_policies_and_attachments(self):
+        student = self.t['Resources']['Student']['Properties']
+        extra = {'PolicyName': 'ExtraDeny', 'PolicyDocument': {'Version': '2012-10-17',
+                 'Statement': [{'Effect': 'Deny', 'Action': '*', 'Resource': '*'}]}}
+        student['Policies'].append(extra)
+        student['ManagedPolicyArns'] = ['arn:aws:iam::123456789012:policy/CustomDeny']
+        result = repair_template(self.t)['Resources']['Student']['Properties']
+        self.assertEqual(result['Policies'], [extra])
+        self.assertEqual(result['ManagedPolicyArns'], student['ManagedPolicyArns'] + [{'Ref': 'Boundary'}])
+
+    def test_refuses_missing_grant_and_custom_boundary(self):
+        for field in ['Policies', 'PermissionsBoundary']:
+            t = copy.deepcopy(self.t)
+            t['Resources']['Student']['Properties'].pop(field)
+            with self.assertRaises(ValueError):
+                repair_template(t)
+
+    def test_new_template_is_already_repaired(self):
+        t = lab.template(self.c, 's01')
+        self.assertEqual(repair_template(t), t)
+
+    def test_destroy_migrated_user_does_not_add_inline_policy(self):
+        calls = []
+        def aws(c, *args):
+            calls.append(args)
+            if args[1] == 'list-stack-resources':
+                return {'StackResourceSummaries': [
+                    {'LogicalResourceId': 'Student', 'PhysicalResourceId': 'student', 'ResourceStatus': 'CREATE_COMPLETE'},
+                    {'LogicalResourceId': 'Boundary', 'PhysicalResourceId': 'boundary-arn', 'ResourceStatus': 'CREATE_COMPLETE'}]}
+            if args[1] == 'get-template':
+                return {'TemplateBody': lab.template(self.c, 's01')}
+            return {}
+        c = dict(self.c, students=['s01'])
+        with patch.object(lab, 'owned_stack', return_value={}), patch.object(lab, 'aws', side_effect=aws):
+            lab.destroy(c)
+        self.assertTrue(any(x[:2] == ('iam', 'detach-user-policy') for x in calls))
+        self.assertFalse(any(x[:2] == ('iam', 'put-user-policy') for x in calls))
 
     def test_change_set_rejects_data_and_replacement(self):
         for name, action, replacement in [('Web', 'Modify', 'False'), ('Bucket', 'Remove', 'False'),
@@ -55,3 +98,4 @@ class RepairTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

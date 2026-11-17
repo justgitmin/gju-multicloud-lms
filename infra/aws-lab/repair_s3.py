@@ -16,14 +16,31 @@ def repair_template(original):
         if r.get(name, {}).get('Type') != kind:
             raise ValueError('Unsupported stack resource: ' + name)
     boundary = r['Boundary']['Properties']['PolicyDocument']
-    inline = next(p for p in r['Student']['Properties']['Policies'] if p['PolicyName'] == 'AssignedLabOnly')
-    if boundary != inline['PolicyDocument']:
-        raise ValueError('Inline policy and boundary differ; review custom permissions manually')
+    student = r['Student']['Properties']
+    if student.get('PermissionsBoundary') != {'Ref': 'Boundary'}:
+        raise ValueError('Custom permissions boundary; refusing overwrite')
+    policies = student.get('Policies', [])
+    inline = next((p for p in policies if p['PolicyName'] == 'AssignedLabOnly'), None)
+    attached = student.get('ManagedPolicyArns', [])
+    if inline is not None:
+        if boundary != inline['PolicyDocument']:
+            raise ValueError('Inline policy and boundary differ; review custom permissions manually')
+    elif {'Ref': 'Boundary'} not in attached:
+        raise ValueError('Expected assigned policy is missing; refusing permission changes')
     grant = {'Sid': 'S3ConsoleBucketNames', 'Effect': 'Allow',
              'Action': 's3:ListAllMyBuckets', 'Resource': '*'}
     if grant not in boundary['Statement']:
         boundary['Statement'].append(grant)
-    inline['PolicyDocument'] = copy.deepcopy(boundary)
+    # Reuse the existing customer-managed policy as both grant and boundary.
+    # Removing the old large inline policy avoids the aggregate 2048-byte user quota.
+    student['ManagedPolicyArns'] = copy.deepcopy(attached)
+    if {'Ref': 'Boundary'} not in student['ManagedPolicyArns']:
+        student['ManagedPolicyArns'].append({'Ref': 'Boundary'})
+    remaining = [p for p in policies if p['PolicyName'] != 'AssignedLabOnly']
+    if remaining:
+        student['Policies'] = remaining
+    else:
+        student.pop('Policies', None)
     node_policy = {
         'PolicyName': 'OwnPracticeObjects',
         'PolicyDocument': {'Version': '2012-10-17', 'Statement': [
@@ -124,3 +141,4 @@ if __name__ == '__main__':
     except Exception as error:
         print(type(error).__name__ + ': ' + str(error), file=sys.stderr)
         sys.exit(1)
+

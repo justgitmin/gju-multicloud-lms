@@ -28,7 +28,8 @@ class LabTests(unittest.TestCase):
     def test_boundary_and_inline_match(self):
         r = self.t['Resources']
         self.assertEqual(r['Student']['Properties']['PermissionsBoundary'], {'Ref':'Boundary'})
-        self.assertEqual(r['Student']['Properties']['Policies'][0]['PolicyDocument'], r['Boundary']['Properties']['PolicyDocument'])
+        self.assertEqual(r['Student']['Properties']['ManagedPolicyArns'], [{'Ref': 'Boundary'}])
+        self.assertNotIn('Policies', r['Student']['Properties'])
     def test_ssh_source_and_database_isolation(self):
         r = self.t['Resources']
         self.assertEqual(r['WebSecurity']['Properties']['SecurityGroupIngress'][0]['CidrIp'], {'Ref':'SshCidr'})
@@ -131,8 +132,7 @@ class LabTests(unittest.TestCase):
     def test_console_list_permission_in_both_policies(self):
         r = self.t['Resources']
         boundary = r['Boundary']['Properties']['PolicyDocument']
-        inline = r['Student']['Properties']['Policies'][0]['PolicyDocument']
-        self.assertEqual(boundary, inline)
+        self.assertEqual(r['Student']['Properties']['ManagedPolicyArns'], [{'Ref': 'Boundary'}])
         grants = [x for x in boundary['Statement'] if x.get('Sid') == 'S3ConsoleBucketNames']
         self.assertEqual(grants, [{'Sid': 'S3ConsoleBucketNames', 'Effect': 'Allow',
                                   'Action': 's3:ListAllMyBuckets', 'Resource': '*'}])
@@ -164,3 +164,4 @@ class LabTests(unittest.TestCase):
         self.assertNotEqual(doc['Properties']['Name'],'SSM-SessionManagerRunShell')
 
 if __name__=='__main__':unittest.main()
+

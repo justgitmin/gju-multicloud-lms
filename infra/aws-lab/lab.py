@@ -86,7 +86,7 @@ def legacy_template(c, student):
     # PassRole, resource creation, security changes, snapshots, sharing, or CloudFormation permissions.
     doc = {'Version': '2012-10-17', 'Statement': statements}
     r['Boundary'] = resource('IAM::ManagedPolicy', Description=name + ' lab maximum identity permissions', PolicyDocument=doc)
-    r['Student'] = resource('IAM::User', UserName=name, Tags=tags, PermissionsBoundary=ref('Boundary'), LoginProfile={'Password': ref('LoginPassword'), 'PasswordResetRequired': True}, Policies=[{'PolicyName': 'AssignedLabOnly', 'PolicyDocument': doc}])
+    r['Student'] = resource('IAM::User', UserName=name, Tags=tags, PermissionsBoundary=ref('Boundary'), LoginProfile={'Password': ref('LoginPassword'), 'PasswordResetRequired': True}, ManagedPolicyArns=[ref('Boundary')])
     result = {'AWSTemplateFormatVersion': '2010-09-09', 'Description': 'GJU assigned-resource video lab: ' + name, 'Parameters': {'SshCidr': {'Type': 'String'}, 'PublicKey': {'Type': 'String'}, 'LoginPassword': {'Type': 'String', 'NoEcho': True, 'MinLength': 16}, 'DbPassword': {'Type': 'String', 'NoEcho': True, 'MinLength': 16}, 'UbuntuAmi': {'Type': 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>', 'Default': c['ami_parameter']}}, 'Resources': r, 'Outputs': out}
     if not c['rds']:
         del result['Parameters']['DbPassword']
@@ -180,8 +180,7 @@ def enable_ssm(t, c):
         {'Effect':'Allow','Action':['ssm:StartSession','ssm:GetDocument','ssm:DescribeDocument'],'Resource':shell},
         {'Effect':'Allow','Action':['ssm:ResumeSession','ssm:TerminateSession','ssmmessages:OpenDataChannel'],'Resource':[own_sessions,{'Fn::Sub':'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:session/${!aws:userid}-*'}]},
         {'Effect':'Allow','Action':['ssm:DescribeSessions','ssm:GetConnectionStatus','ssm:DescribeInstanceInformation','ssm:DescribeInstanceProperties','ssm:ListDocuments'],'Resource':'*','Condition':{'StringEquals':{'aws:RequestedRegion':c['region']}}}]
-    # Both reference the same object in memory; explicitly set for clarity after JSON serialization.
-    r['Student']['Properties']['Policies'][0]['PolicyDocument']=doc
+    # The same managed policy grants permissions and caps any additional grants.
     t['Outputs']['SessionDocument']={'Value':{'Ref':'SharedSessionDocument'}}
     t['Outputs']['SessionConsoleUrl']={'Value':{'Fn::Sub':'https://${AWS::Region}.console.aws.amazon.com/systems-manager/session-manager/start-session?region=${AWS::Region}&target=${Web}&documentName=${SharedSessionDocument}'}}
     t['Description']+=' (Session Manager, no SSH key)'
@@ -362,8 +361,17 @@ def destroy(c):
         user = found.get('Student', {}).get('PhysicalResourceId')
         if user and found['Student']['ResourceStatus'] != 'DELETE_COMPLETE':
             deny = json.dumps({'Version': '2012-10-17', 'Statement': [{'Effect': 'Deny', 'Action': '*', 'Resource': '*'}]})
-            # Replace existing stack-owned inline policy, so CloudFormation removes it with the user.
-            aws(c, 'iam', 'put-user-policy', '--user-name', user, '--policy-name', 'AssignedLabOnly', '--policy-document', deny)
+            body = aws(c, 'cloudformation', 'get-template', '--stack-name', name)['TemplateBody']
+            deployed = json.loads(body) if isinstance(body, str) else body
+            props = deployed['Resources']['Student']['Properties']
+            if {'Ref': 'Boundary'} in props.get('ManagedPolicyArns', []):
+                # Revoke the migrated grant without creating an unmanaged inline policy
+                # that could prevent CloudFormation from deleting the user.
+                boundary_arn = found['Boundary']['PhysicalResourceId']
+                aws(c, 'iam', 'detach-user-policy', '--user-name', user, '--policy-arn', boundary_arn)
+            else:
+                # Legacy stacks still own this inline policy and remove it on deletion.
+                aws(c, 'iam', 'put-user-policy', '--user-name', user, '--policy-name', 'AssignedLabOnly', '--policy-document', deny)
         bucket = found.get('Bucket', {}).get('PhysicalResourceId')
         if bucket and found['Bucket']['ResourceStatus'] != 'DELETE_COMPLETE':
             # Nonversioned lab bucket only. Refuse rather than leak retained versions/delete markers.
@@ -433,3 +441,4 @@ if __name__ == '__main__':
     except Exception as error:
         print(type(error).__name__ + ': ' + str(error), file=sys.stderr)
         sys.exit(1)
+
