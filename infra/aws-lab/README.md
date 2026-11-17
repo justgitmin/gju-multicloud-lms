@@ -176,3 +176,21 @@ CloudFormation이 관리하는 사용자 정책과 경계가 서로 다르면 �
 3. NHN에서 해당 URL로 PUT/GET 후 SHA-256 일치 확인.
 4. 다른 학생 버킷의 객체 조회·업로드가 거부되는지 확인.
 5. 기존 로그인 비밀번호·DB 비밀번호·PEM·LMS 배정은 변경하지 않습니다.
+
+
+### Student inline-policy quota migration
+
+Student identity permissions now attach the existing per-student `Boundary`
+customer-managed policy through `ManagedPolicyArns`; the same policy remains the
+permissions boundary. This preserves the exact permission ceiling without the
+2048-character aggregate user inline-policy limit. No AWS-wide FullAccess policy
+is attached. Bucket-name listing is account-wide; object access remains scoped to
+the assigned bucket's `practice/*` path.
+
+`repair_s3.py` migrates existing `AssignedLabOnly` inline policies only when their
+document exactly matches the stack boundary. It preserves other inline policies,
+managed attachments, LoginProfile and all data resources. Missing/custom boundary
+or mismatched policy documents require manual review. Repeated repairs are no-ops.
+Deploy the updated Ops image before using the existing read-only diagnostic and
+S3 repair buttons. A rollback-complete stack is eligible for this repair; do not
+recreate student accounts or redistribute credentials.

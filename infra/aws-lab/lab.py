@@ -86,7 +86,7 @@ def legacy_template(c, student):
     # PassRole, resource creation, security changes, snapshots, sharing, or CloudFormation permissions.
     doc = {'Version': '2012-10-17', 'Statement': statements}
     r['Boundary'] = resource('IAM::ManagedPolicy', Description=name + ' lab maximum identity permissions', PolicyDocument=doc)
-    r['Student'] = resource('IAM::User', UserName=name, Tags=tags, PermissionsBoundary=ref('Boundary'), LoginProfile={'Password': ref('LoginPassword'), 'PasswordResetRequired': True}, Policies=[{'PolicyName': 'AssignedLabOnly', 'PolicyDocument': doc}])
+    r['Student'] = resource('IAM::User', UserName=name, Tags=tags, PermissionsBoundary=ref('Boundary'), LoginProfile={'Password': ref('LoginPassword'), 'PasswordResetRequired': True}, ManagedPolicyArns=[ref('Boundary')])
     result = {'AWSTemplateFormatVersion': '2010-09-09', 'Description': 'GJU assigned-resource video lab: ' + name, 'Parameters': {'SshCidr': {'Type': 'String'}, 'PublicKey': {'Type': 'String'}, 'LoginPassword': {'Type': 'String', 'NoEcho': True, 'MinLength': 16}, 'DbPassword': {'Type': 'String', 'NoEcho': True, 'MinLength': 16}, 'UbuntuAmi': {'Type': 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>', 'Default': c['ami_parameter']}}, 'Resources': r, 'Outputs': out}
     if not c['rds']:
         del result['Parameters']['DbPassword']
@@ -180,8 +180,7 @@ def enable_ssm(t, c):
         {'Effect':'Allow','Action':['ssm:StartSession','ssm:GetDocument','ssm:DescribeDocument'],'Resource':shell},
         {'Effect':'Allow','Action':['ssm:ResumeSession','ssm:TerminateSession','ssmmessages:OpenDataChannel'],'Resource':[own_sessions,{'Fn::Sub':'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:session/${!aws:userid}-*'}]},
         {'Effect':'Allow','Action':['ssm:DescribeSessions','ssm:GetConnectionStatus','ssm:DescribeInstanceInformation','ssm:DescribeInstanceProperties','ssm:ListDocuments'],'Resource':'*','Condition':{'StringEquals':{'aws:RequestedRegion':c['region']}}}]
-    # Both reference the same object in memory; explicitly set for clarity after JSON serialization.
-    r['Student']['Properties']['Policies'][0]['PolicyDocument']=doc
+    # The same managed policy grants permissions and caps any additional grants.
     t['Outputs']['SessionDocument']={'Value':{'Ref':'SharedSessionDocument'}}
     t['Outputs']['SessionConsoleUrl']={'Value':{'Fn::Sub':'https://${AWS::Region}.console.aws.amazon.com/systems-manager/session-manager/start-session?region=${AWS::Region}&target=${Web}&documentName=${SharedSessionDocument}'}}
     t['Description']+=' (Session Manager, no SSH key)'
@@ -433,3 +432,4 @@ if __name__ == '__main__':
     except Exception as error:
         print(type(error).__name__ + ': ' + str(error), file=sys.stderr)
         sys.exit(1)
+
