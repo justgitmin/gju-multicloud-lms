@@ -26,7 +26,7 @@ def create_app(settings=None,start_worker=True):
  app=FastAPI(title='TBIT Cloud Ops',docs_url=None,redoc_url=None,openapi_url=None,lifespan=lifespan);app.state.store=store;app.state.vault=vault;app.state.worker=worker
  dummy_hash=password_hash('dummy-not-a-user-'+secrets.token_hex(16))
  root=Path(__file__).parent;app.mount('/static',StaticFiles(directory=root/'static'),name='static');templates=Jinja2Templates(directory=root/'templates');templates.env.filters['kst']=lambda value:datetime.datetime.fromtimestamp(value,datetime.timezone(datetime.timedelta(hours=9))).strftime('%m/%d %H:%M:%S')
- templates.env.filters['job_label']=lambda kind:{'SYNC':'서버 상태 동기화','START':'서버 시작','STOP':'서버 일시 중지','RESOURCE_REFRESH':'자원 실제 상태 조회','RESOURCE_ACTION':'선택 자원 작업','AWS_S3_REPAIR':'AWS 기존 학생 S3 권한 수정','AWS_CHECK':'AWS 생성 전 한도·사양 점검','PROVISION':'AWS 교육 환경 생성','DESTROY':'AWS 교육 환경 삭제','NHN_PLAN':'NHN 생성 계획 조회','NHN_ENABLE':'NHN 서비스 활성화','NHN_APPLY':'NHN 저장소·DB 준비','NHN_CLEANUP':'NHN 생성 자원 정리','NHN_SERVER_PLAN':'NHN 서버 계획 조회','NHN_SERVERS':'NHN 학생 환경 준비','NHN_IPS':'NHN 공인 IP 연결','NHN_IAM_PLAN':'학생 IAM 권한 조회','NHN_IAM_APPLY':'학생 IAM 권한 적용'}.get(kind,kind)
+ templates.env.filters['job_label']=lambda kind:{'SYNC':'서버 상태 동기화','START':'서버 시작','STOP':'서버 일시 중지','RESOURCE_REFRESH':'자원 실제 상태 조회','RESOURCE_ACTION':'선택 자원 작업','AWS_S3_CHECK':'AWS S3 읽기 전용 진단','AWS_S3_REPAIR':'AWS 기존 학생 S3 권한 수정','AWS_CHECK':'AWS 생성 전 한도·사양 점검','PROVISION':'AWS 교육 환경 생성','DESTROY':'AWS 교육 환경 삭제','NHN_PLAN':'NHN 생성 계획 조회','NHN_ENABLE':'NHN 서비스 활성화','NHN_APPLY':'NHN 저장소·DB 준비','NHN_CLEANUP':'NHN 생성 자원 정리','NHN_SERVER_PLAN':'NHN 서버 계획 조회','NHN_SERVERS':'NHN 학생 환경 준비','NHN_IPS':'NHN 공인 IP 연결','NHN_IAM_PLAN':'학생 IAM 권한 조회','NHN_IAM_APPLY':'학생 IAM 권한 적용'}.get(kind,kind)
  def user(request,roles=None):
   token=request.cookies.get(COOKIE,'');row=store.one('SELECT u.*,s.csrf FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.expires>? AND u.active=1',(digest(token),time.time())) if re.fullmatch('[0-9a-f]{64}',token) else None
   if not row:raise HTTPException(401,'로그인이 필요합니다.')
@@ -273,11 +273,11 @@ def create_app(settings=None,start_worker=True):
  @app.post('/environments/{id}/action')
  async def environment_action(request:Request,id:str):
   actor,d=await form(request,['ADMIN']);e=store.one('SELECT * FROM environments WHERE id=?',(id,));kind=str(d.get('kind',''))
-  if not e or kind not in ['PROVISION','DESTROY','AWS_CHECK','AWS_S3_REPAIR']:raise HTTPException(400,'환경·작업 확인')
+  if not e or kind not in ['PROVISION','DESTROY','AWS_CHECK','AWS_S3_REPAIR','AWS_S3_CHECK']:raise HTTPException(400,'환경·작업 확인')
   c=connection(e['connection_id'])
   if kind!='AWS_CHECK' and (not c['writable'] or d.get('confirm')!=e['lab_id'] or d.get('account')!=c['account']):raise HTTPException(400,'환경 이름·AWS 계정 ID 확인 문구와 변경 허용 설정이 필요합니다.')
   payload={}
-  if kind=='AWS_S3_REPAIR':
+  if kind in ['AWS_S3_REPAIR','AWS_S3_CHECK']:
    if not verify_password(str(d.get('password','')),actor['password']) or d.get('ack')!='on':raise HTTPException(400,'관리자 비밀번호와 권한 변경 확인이 필요합니다.')
    config=json.loads(e['config'])
    if not config.get('s3') or config.get('access_mode','ssm')!='ssm':raise HTTPException(400,'S3가 있는 Session Manager 환경만 지원합니다.')
@@ -290,7 +290,9 @@ def create_app(settings=None,start_worker=True):
    try:roster_revision=require_generation(config,selected)
    except providers.CloudError as error:raise HTTPException(409,str(error))
    payload={'students':selected,'roster_revision':roster_revision}
-  queue(actor,c,kind,id,payload);return redirect('/#jobs')
+  jid=queue(actor,c,kind,id,payload)
+  if 'application/json' in request.headers.get('accept',''):return JSONResponse({'jobId':jid,'status':'QUEUED','message':'작업이 접수되었습니다.'})
+  return redirect('/#jobs')
  @app.post('/environments/{id}/approved-roster')
  async def aws_approved_roster(request:Request,id:str):
   actor,d=await form(request,['ADMIN'])
@@ -542,3 +544,4 @@ def create_app(settings=None,start_worker=True):
   with store.connect() as db:db.execute('UPDATE users SET password=? WHERE id=?',(encoded,actor['id']));db.execute('DELETE FROM sessions WHERE user_id=?',(actor['id'],))
   store.audit(actor['email'],'PASSWORD_CHANGE');response=RedirectResponse('/login',303);response.delete_cookie(COOKIE);return response
  return app
+
