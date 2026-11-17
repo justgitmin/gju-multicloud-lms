@@ -57,3 +57,19 @@ class S3RepairIntegrationTests(unittest.TestCase):
    self.assertNotIn('OPS_MASTER_KEY',kw['env'])
   with self.assertRaises(CloudError):
    worker.aws_lab(c,{},job)
+
+ def test_json_receipt_returns_job_without_redirect(self):
+  self.prepare_aws()
+  response=self.client.post('/environments/aws-repair/action',data={'csrf':self.csrf,
+      'kind':'AWS_S3_CHECK','confirm':'test-lab','account':'498307943987',
+      'password':'A-long-test-password!','ack':'on'},
+      headers={'Origin':'https://ops.test','Accept':'application/json'})
+  self.assertEqual(response.status_code,200)
+  self.assertEqual(response.json()['status'],'QUEUED')
+  self.assertEqual(self.db.one('SELECT id FROM jobs')['id'],response.json()['jobId'])
+ def test_error_code_does_not_expose_raw_credentials(self):
+  from cloudops.jobs import safe_cli_error
+  message=safe_cli_error(['cloudformation','get-template'],
+      'An error occurred (AccessDenied) when calling the GetTemplate operation: SECRET-KEY token=VERY-PRIVATE')
+  self.assertIn('get-template',message);self.assertIn('AccessDenied',message)
+  self.assertNotIn('SECRET-KEY',message);self.assertNotIn('VERY-PRIVATE',message)

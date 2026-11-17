@@ -1,6 +1,18 @@
-import base64,importlib.util,json,os,secrets,subprocess,tempfile,threading,time
+import re,base64,importlib.util,json,os,secrets,subprocess,tempfile,threading,time
 from pathlib import Path
 from . import providers
+
+
+def safe_cli_error(args, stderr):
+ service=str(args[0]) if args else 'unknown'
+ operation=str(args[1]) if len(args)>1 else 'unknown'
+ label=' '.join(x if re.fullmatch(r'[a-z0-9-]{1,80}',x) else 'unknown' for x in [service,operation])
+ match=re.search(r'An error occurred \(([A-Za-z0-9_.-]{1,80})\)',stderr or '')
+ code=match.group(1) if match else 'CLIError'
+ hint=''
+ if code in ['AccessDenied','AccessDeniedException','UnauthorizedOperation']:hint=' · 저장된 운영자 연결의 해당 작업 권한 확인'
+ elif code in ['ExpiredToken','InvalidClientTokenId','SignatureDoesNotMatch']:hint=' · 저장된 AWS 연결 인증 확인'
+ return 'AWS '+label+' 실패 ['+code+']'+hint+' · 원문·비밀정보는 저장하지 않음'
 
 class Worker:
  def __init__(self,store,vault,runner=None):self.store=store;self.vault=vault;self.runner=runner or Path(__file__).resolve().parents[2]/'infra/aws-lab/lab.py';self.stop=threading.Event()
@@ -27,8 +39,8 @@ class Worker:
   if selected is not None:
    if not isinstance(selected,list) or not selected or len(selected)!=len(set(selected)) or any(code not in config['students'] for code in selected):raise providers.CloudError('AWS 선택 학생이 계획과 일치하지 않습니다.')
    config['students']=selected
-  action={'PROVISION':'apply','DESTROY':'destroy','AWS_CHECK':'check','AWS_S3_REPAIR':'repair'}[job['kind']]
-  if action=='repair' and (not secret.get('access_key') or not secret.get('secret_key')):raise providers.CloudError('저장된 AWS 실습 연결 인증이 필요합니다. 서버 역할로 대체하지 않습니다.')
+  action={'PROVISION':'apply','DESTROY':'destroy','AWS_CHECK':'check','AWS_S3_REPAIR':'repair','AWS_S3_CHECK':'repair-check'}[job['kind']]
+  if action in ['repair','repair-check'] and (not secret.get('access_key') or not secret.get('secret_key')):raise providers.CloudError('저장된 AWS 실습 연결 인증이 필요합니다. 서버 역할로 대체하지 않습니다.')
   aws=providers.AWS(c,secret);aws.identity()
   with tempfile.TemporaryDirectory(prefix='ops-lab-') as folder:
    root=Path(folder);state=root/'state';state.mkdir(mode=0o700);cfg=root/'config.json';cfg.write_text(json.dumps(config));cfg.chmod(0o600)
@@ -52,16 +64,16 @@ class Worker:
     checkpoint();self.store.execute('UPDATE jobs SET message=?,updated=? WHERE id=?',('AWS '+str(args[0])+' '+str(args[1])+' 진행 중',time.time(),job['id']));remaining=deadline-time.monotonic()
     if remaining<=0:raise providers.CloudError('작업 시간 제한 초과: 클라우드 상태를 확인하세요.')
     result=subprocess.run(['aws','--region',config['region'],'--output','json','--no-cli-pager',*args],env=process_env,capture_output=True,text=True,timeout=remaining)
-    if result.returncode:raise providers.CloudError('AWS 명령 실패: 계정·권한·CloudFormation 이벤트를 확인하세요. 원문 응답은 저장하지 않습니다.')
+    if result.returncode:raise providers.CloudError(safe_cli_error(args,result.stderr))
     return json.loads(result.stdout) if result.stdout.strip() else {}
    lab.save_private=durable_save;lab.aws=cli
    try:
     validated=lab.load_config(cfg,deployment=action=='apply')
-    if action=='repair':
+    if action in ['repair','repair-check']:
      repair_path=self.runner.with_name('repair_s3.py')
      repair_spec=importlib.util.spec_from_file_location('s3_repair_'+job['id'],repair_path)
      repair=importlib.util.module_from_spec(repair_spec);repair_spec.loader.exec_module(repair)
-     repair.run(validated,root/'repair',True,c['account'],lab)
+     repair.run(validated,root/'repair',action=='repair',c['account'],lab)
     elif action=='apply':lab.deploy(validated,state)
     elif action=='check':
      from .lms_roster import approved_people
@@ -161,8 +173,8 @@ class Worker:
     elif job['kind']=='NHN_ENABLE':manager.enable(job['target']);message='NHN 서비스 일괄 활성화 완료 · 계획 다시 조회를 누르세요.'
     elif job['kind']=='NHN_APPLY':manager.apply(job['target']);message='NHN 프로젝트 일괄 준비 완료'
     else:manager.cleanup(job['target']);message='NHN 소유 자원 정리 완료 · 기존 서버는 유지'
-   elif job['kind'] in ['PROVISION','DESTROY','AWS_CHECK','AWS_S3_REPAIR']:
-    self.aws_lab(c,secret,job);message='AWS 사전 점검 통과 · VPC·EC2 vCPU·RDS 한도·MySQL 사양 확인 (생성 없음)' if job['kind']=='AWS_CHECK' else ('AWS S3 권한 수정 완료 · 학생 콘솔·서버에서 확인하세요.' if job['kind']=='AWS_S3_REPAIR' else 'AWS 템플릿 작업 완료 · 동기화로 확인하세요.')
+   elif job['kind'] in ['PROVISION','DESTROY','AWS_CHECK','AWS_S3_REPAIR','AWS_S3_CHECK']:
+    self.aws_lab(c,secret,job);message='AWS 사전 점검 통과 · VPC·EC2 vCPU·RDS 한도·MySQL 사양 확인 (생성 없음)' if job['kind']=='AWS_CHECK' else ('AWS S3 읽기 전용 진단 완료 · 실제 변경 없음' if job['kind']=='AWS_S3_CHECK' else 'AWS S3 권한 수정 완료 · 학생 콘솔·서버에서 확인하세요.' if job['kind']=='AWS_S3_REPAIR' else 'AWS 템플릿 작업 완료 · 동기화로 확인하세요.')
    else:raise providers.CloudError('지원하지 않는 작업')
    status='SUCCEEDED'
   except Exception as error:
@@ -194,3 +206,4 @@ class Worker:
         self.enqueue(admin['id'],c,'RESOURCE_REFRESH' if batches or envs else 'SYNC',c['id'],{'automatic':True,'batches':[b['id'] for b in batches],'environments':[e['id'] for e in envs]})
        except Exception:pass
    self.stop.wait(2)
+
