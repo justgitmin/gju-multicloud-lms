@@ -27,7 +27,8 @@ class Worker:
   if selected is not None:
    if not isinstance(selected,list) or not selected or len(selected)!=len(set(selected)) or any(code not in config['students'] for code in selected):raise providers.CloudError('AWS 선택 학생이 계획과 일치하지 않습니다.')
    config['students']=selected
-  action={'PROVISION':'apply','DESTROY':'destroy','AWS_CHECK':'check'}[job['kind']]
+  action={'PROVISION':'apply','DESTROY':'destroy','AWS_CHECK':'check','AWS_S3_REPAIR':'repair'}[job['kind']]
+  if action=='repair' and (not secret.get('access_key') or not secret.get('secret_key')):raise providers.CloudError('저장된 AWS 실습 연결 인증이 필요합니다. 서버 역할로 대체하지 않습니다.')
   aws=providers.AWS(c,secret);aws.identity()
   with tempfile.TemporaryDirectory(prefix='ops-lab-') as folder:
    root=Path(folder);state=root/'state';state.mkdir(mode=0o700);cfg=root/'config.json';cfg.write_text(json.dumps(config));cfg.chmod(0o600)
@@ -56,7 +57,12 @@ class Worker:
    lab.save_private=durable_save;lab.aws=cli
    try:
     validated=lab.load_config(cfg,deployment=action=='apply')
-    if action=='apply':lab.deploy(validated,state)
+    if action=='repair':
+     repair_path=self.runner.with_name('repair_s3.py')
+     repair_spec=importlib.util.spec_from_file_location('s3_repair_'+job['id'],repair_path)
+     repair=importlib.util.module_from_spec(repair_spec);repair_spec.loader.exec_module(repair)
+     repair.run(validated,root/'repair',True,c['account'],lab)
+    elif action=='apply':lab.deploy(validated,state)
     elif action=='check':
      from .lms_roster import approved_people
      approved=approved_people(config)
@@ -155,8 +161,8 @@ class Worker:
     elif job['kind']=='NHN_ENABLE':manager.enable(job['target']);message='NHN 서비스 일괄 활성화 완료 · 계획 다시 조회를 누르세요.'
     elif job['kind']=='NHN_APPLY':manager.apply(job['target']);message='NHN 프로젝트 일괄 준비 완료'
     else:manager.cleanup(job['target']);message='NHN 소유 자원 정리 완료 · 기존 서버는 유지'
-   elif job['kind'] in ['PROVISION','DESTROY','AWS_CHECK']:
-    self.aws_lab(c,secret,job);message='AWS 사전 점검 통과 · VPC·EC2 vCPU·RDS 한도·MySQL 사양 확인 (생성 없음)' if job['kind']=='AWS_CHECK' else 'AWS 템플릿 작업 완료 · 동기화로 확인하세요.'
+   elif job['kind'] in ['PROVISION','DESTROY','AWS_CHECK','AWS_S3_REPAIR']:
+    self.aws_lab(c,secret,job);message='AWS 사전 점검 통과 · VPC·EC2 vCPU·RDS 한도·MySQL 사양 확인 (생성 없음)' if job['kind']=='AWS_CHECK' else ('AWS S3 권한 수정 완료 · 학생 콘솔·서버에서 확인하세요.' if job['kind']=='AWS_S3_REPAIR' else 'AWS 템플릿 작업 완료 · 동기화로 확인하세요.')
    else:raise providers.CloudError('지원하지 않는 작업')
    status='SUCCEEDED'
   except Exception as error:

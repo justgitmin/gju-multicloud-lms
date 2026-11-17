@@ -9,7 +9,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ops-platform/cloudops ./cloudops
 COPY examples/demo-app ./examples/demo-app
 COPY ops-platform/backup.py ./backup.py
-COPY infra/aws-lab/lab.py /infra/aws-lab/lab.py
+COPY infra/aws-lab/lab.py infra/aws-lab/repair_s3.py /infra/aws-lab/
 USER ops
 EXPOSE 8780
 CMD ["uvicorn","cloudops.main:app","--host","0.0.0.0","--port","8780","--workers","1","--no-proxy-headers","--no-access-log"]
