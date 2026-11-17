@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 import sys
 import time
-import lab
 
 
 def repair_template(original):
@@ -55,17 +54,10 @@ def validate_changes(changes):
             raise ValueError('Change set affects non-IAM resources or may replace a resource')
 
 
-def main():
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--config', required=True)
-    p.add_argument('--confirm-account', required=True)
-    p.add_argument('--output', default='.lab-s3-repair')
-    p.add_argument('--apply', action='store_true', help='Create, inspect and execute IAM-only change sets')
-    a = p.parse_args()
-    c = lab.load_config(a.config)
-    if lab.aws(c, 'sts', 'get-caller-identity')['Account'] != a.confirm_account:
+def run(c, output, apply, account, lab):
+    if lab.aws(c, 'sts', 'get-caller-identity')['Account'] != account:
         raise ValueError('AWS account mismatch')
-    folder = Path(a.output).resolve()
+    folder = Path(output).resolve()
     folder.mkdir(parents=True, exist_ok=True, mode=0o700)
     plans = []
     # Validate every stack and template before changing any cloud resource.
@@ -83,7 +75,7 @@ def main():
         path.chmod(0o600)
         plans.append((stack, original, updated, path))
         print(student, 'already repaired' if original == updated else 'IAM-only repair planned')
-    if not a.apply:
+    if not apply:
         print('Read-only plan complete. No cloud resources changed. Review files before --apply.')
         return
     for stack, original, updated, path in plans:
@@ -113,6 +105,17 @@ def main():
         lab.aws(c, 'cloudformation', 'execute-change-set', '--change-set-name', change_id)
         lab.aws(c, 'cloudformation', 'wait', 'stack-update-complete', '--stack-name', stack['StackName'])
         print(stack['StackName'], 'IAM repair applied; verify student console and EC2 S3 access')
+
+
+def main():
+    import lab
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--config', required=True)
+    p.add_argument('--confirm-account', required=True)
+    p.add_argument('--output', default='.lab-s3-repair')
+    p.add_argument('--apply', action='store_true')
+    a = p.parse_args()
+    run(lab.load_config(a.config), a.output, a.apply, a.confirm_account, lab)
 
 
 if __name__ == '__main__':
