@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 import lab
@@ -68,6 +69,23 @@ class RepairTests(unittest.TestCase):
     def test_new_template_is_already_repaired(self):
         t = lab.template(self.c, 's01')
         self.assertEqual(repair_template(t), t)
+
+    def test_destroy_migrated_user_does_not_add_inline_policy(self):
+        calls = []
+        def aws(c, *args):
+            calls.append(args)
+            if args[1] == 'list-stack-resources':
+                return {'StackResourceSummaries': [
+                    {'LogicalResourceId': 'Student', 'PhysicalResourceId': 'student', 'ResourceStatus': 'CREATE_COMPLETE'},
+                    {'LogicalResourceId': 'Boundary', 'PhysicalResourceId': 'boundary-arn', 'ResourceStatus': 'CREATE_COMPLETE'}]}
+            if args[1] == 'get-template':
+                return {'TemplateBody': lab.template(self.c, 's01')}
+            return {}
+        c = dict(self.c, students=['s01'])
+        with patch.object(lab, 'owned_stack', return_value={}), patch.object(lab, 'aws', side_effect=aws):
+            lab.destroy(c)
+        self.assertTrue(any(x[:2] == ('iam', 'detach-user-policy') for x in calls))
+        self.assertFalse(any(x[:2] == ('iam', 'put-user-policy') for x in calls))
 
     def test_change_set_rejects_data_and_replacement(self):
         for name, action, replacement in [('Web', 'Modify', 'False'), ('Bucket', 'Remove', 'False'),

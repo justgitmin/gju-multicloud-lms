@@ -361,8 +361,17 @@ def destroy(c):
         user = found.get('Student', {}).get('PhysicalResourceId')
         if user and found['Student']['ResourceStatus'] != 'DELETE_COMPLETE':
             deny = json.dumps({'Version': '2012-10-17', 'Statement': [{'Effect': 'Deny', 'Action': '*', 'Resource': '*'}]})
-            # Replace existing stack-owned inline policy, so CloudFormation removes it with the user.
-            aws(c, 'iam', 'put-user-policy', '--user-name', user, '--policy-name', 'AssignedLabOnly', '--policy-document', deny)
+            body = aws(c, 'cloudformation', 'get-template', '--stack-name', name)['TemplateBody']
+            deployed = json.loads(body) if isinstance(body, str) else body
+            props = deployed['Resources']['Student']['Properties']
+            if {'Ref': 'Boundary'} in props.get('ManagedPolicyArns', []):
+                # Revoke the migrated grant without creating an unmanaged inline policy
+                # that could prevent CloudFormation from deleting the user.
+                boundary_arn = found['Boundary']['PhysicalResourceId']
+                aws(c, 'iam', 'detach-user-policy', '--user-name', user, '--policy-arn', boundary_arn)
+            else:
+                # Legacy stacks still own this inline policy and remove it on deletion.
+                aws(c, 'iam', 'put-user-policy', '--user-name', user, '--policy-name', 'AssignedLabOnly', '--policy-document', deny)
         bucket = found.get('Bucket', {}).get('PhysicalResourceId')
         if bucket and found['Bucket']['ResourceStatus'] != 'DELETE_COMPLETE':
             # Nonversioned lab bucket only. Refuse rather than leak retained versions/delete markers.
