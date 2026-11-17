@@ -72,7 +72,7 @@ def legacy_template(c, student):
     out = {'Username': {'Value': name}, 'LoginUrl': {'Value': sub('https://${AWS::AccountId}.signin.aws.amazon.com/console/')}, 'InstanceId': {'Value': ref('Web')}, 'PublicIp': {'Value': {'Fn::GetAtt': ['Web', 'PublicIp']}}, 'VpcId': {'Value': ref('Vpc')}}
     if c['s3']:
         r['Bucket'] = resource('S3::Bucket', Tags=tags, BucketEncryption={'ServerSideEncryptionConfiguration': [{'ServerSideEncryptionByDefault': {'SSEAlgorithm': 'AES256'}}]}, PublicAccessBlockConfiguration={'BlockPublicAcls': True, 'IgnorePublicAcls': True, 'BlockPublicPolicy': True, 'RestrictPublicBuckets': True}, OwnershipControls={'Rules': [{'ObjectOwnership': 'BucketOwnerEnforced'}]})
-        statements += [{'Effect': 'Allow', 'Action': ['s3:GetBucketLocation', 's3:ListBucket'], 'Resource': {'Fn::GetAtt': ['Bucket', 'Arn']}}, {'Effect': 'Allow', 'Action': ['s3:PutObject', 's3:GetObject', 's3:DeleteObject'], 'Resource': sub('${Bucket.Arn}/practice/*')}]
+        statements += [{'Sid': 'S3ConsoleBucketNames', 'Effect': 'Allow', 'Action': 's3:ListAllMyBuckets', 'Resource': '*'}, {'Effect': 'Allow', 'Action': ['s3:GetBucketLocation', 's3:ListBucket'], 'Resource': {'Fn::GetAtt': ['Bucket', 'Arn']}}, {'Effect': 'Allow', 'Action': ['s3:PutObject', 's3:GetObject', 's3:DeleteObject'], 'Resource': sub('${Bucket.Arn}/practice/*')}]
         out['BucketName'] = {'Value': ref('Bucket')}
         out['S3ConsoleUrl'] = {'Value': sub('https://s3.console.aws.amazon.com/s3/buckets/${Bucket}?region=${AWS::Region}&prefix=practice/&showversions=false')}
     if c['rds']:
@@ -153,12 +153,21 @@ def enable_ssm(t, c):
     r['WebSecurity']['Properties']['GroupDescription']='Public training HTTP; no inbound SSH'
     r['WebSecurity']['Properties']['SecurityGroupIngress']=[rule for rule in r['WebSecurity']['Properties']['SecurityGroupIngress'] if rule['FromPort']!=22]
     t['Parameters']['SharedSessionDocument']={'Type':'String'}
-    # Deliberately no GetParameter/GetParameters or S3 rights on the instance role.
-    # Students with sudo can obtain this role's temporary credentials, so keep it channel-only.
+    # No account parameters or other students' data. The shell can use only its own practice/ objects.
     r['NodeRole']={'Type':'AWS::IAM::Role','Properties':{
         'AssumeRolePolicyDocument':{'Version':'2012-10-17','Statement':[{'Effect':'Allow','Principal':{'Service':'ec2.amazonaws.com'},'Action':'sts:AssumeRole'}]},
         'Policies':[{'PolicyName':'SessionAgentOnly','PolicyDocument':{'Version':'2012-10-17','Statement':[{
             'Effect':'Allow','Action':['ssm:UpdateInstanceInformation','ssmmessages:CreateControlChannel','ssmmessages:CreateDataChannel','ssmmessages:OpenControlChannel','ssmmessages:OpenDataChannel'],'Resource':'*'}]}}]}}
+    if c['s3']:
+        r['NodeRole']['Properties']['Policies'].append({
+            'PolicyName': 'OwnPracticeObjects',
+            'PolicyDocument': {'Version': '2012-10-17', 'Statement': [
+                {'Effect': 'Allow', 'Action': 's3:GetBucketLocation', 'Resource': {'Fn::GetAtt': ['Bucket', 'Arn']}},
+                {'Effect': 'Allow', 'Action': 's3:ListBucket', 'Resource': {'Fn::GetAtt': ['Bucket', 'Arn']},
+                 'Condition': {'StringLike': {'s3:prefix': ['practice/', 'practice/*']}}},
+                {'Effect': 'Allow', 'Action': ['s3:PutObject', 's3:GetObject'],
+                 'Resource': {'Fn::Sub': '${Bucket.Arn}/practice/*'}}
+            ]}})
     r['NodeProfile']={'Type':'AWS::IAM::InstanceProfile','Properties':{'Roles':[{'Ref':'NodeRole'}]}}
     web['IamInstanceProfile']={'Ref':'NodeProfile'}
     web['UserData']={'Fn::Base64':'#!/bin/bash\nset -eu\nif snap list amazon-ssm-agent >/dev/null 2>&1; then\n  snap start --enable amazon-ssm-agent\nelse\n  systemctl enable --now amazon-ssm-agent\nfi\n'}
