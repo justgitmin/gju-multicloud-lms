@@ -5,6 +5,7 @@ import {db} from '../lib/db';
 import {requireAdmin,requireUser,allowAttempt} from '../lib/auth';
 import {quizProgress} from '../lib/quiz-progress.mjs';
 import {grade,safeUrl} from '../lib/assessment.mjs';
+import {fileExtensions,maxSubmissionBytes,submissionCourses} from '../lib/submission-courses';
 const text=(form:FormData,key:string)=>typeof form.get(key)==='string'?String(form.get(key)):'';
 function fail(courseId:string,message:string):never{redirect(`/course/${encodeURIComponent(courseId)}?error=${encodeURIComponent(message)}`);}
 async function approvedEnrollment(courseId:string){const user=await requireUser();const enrollment=await db.enrollment.findUnique({where:{userId_courseId:{userId:user.id,courseId}},include:{course:{select:{published:true}}}});if(!enrollment||enrollment.status!=='APPROVED'||!enrollment.course.published)redirect('/classroom');return enrollment;}
@@ -13,7 +14,22 @@ export async function submitLab(form:FormData){
  const content=text(form,'content').trim();if(content.length<30||content.length>15000)fail(lab.courseId,'실습 설명은 30~15,000자로 작성하세요.');
  let url;try{url=safeUrl(text(form,'url').trim());}catch{fail(lab.courseId,'결과물 주소는 http 또는 https 주소를 입력하세요.');}
  if(!await allowAttempt('lab-submit',enrollment.id,30))fail(lab.courseId,'제출 요청이 많습니다. 잠시 후 다시 시도하세요.');
- await db.submission.upsert({where:{enrollmentId_labId:{enrollmentId:enrollment.id,labId:lab.id}},create:{enrollmentId:enrollment.id,labId:lab.id,content,url},update:{content,url,status:'PENDING',feedback:'',reviewedBy:null,reviewedAt:null}});
+ const upload=form.get('attachment');
+ let file: {name:string;data:Uint8Array<ArrayBuffer>}|undefined;
+ if(upload instanceof File&&upload.size>0){
+  const name=upload.name.replace(/[\x00-\x1f\x7f/\\]/g,'_').slice(-180);
+  const extension=name.split('.').pop()?.toLowerCase();
+  if(upload.size>maxSubmissionBytes||!extension||!fileExtensions.includes(extension))fail(lab.courseId,'허용된 형식의 10MB 이하 파일을 첨부하세요.');
+  file={name,data:new Uint8Array(await upload.arrayBuffer())};
+ }
+ if(!file&&submissionCourses.has(lab.courseId)){
+  const existing=await db.submission.findUnique({
+   where:{enrollmentId_labId:{enrollmentId:enrollment.id,labId:lab.id}},
+   select:{file:{select:{submissionId:true}}}
+  });
+  if(!existing?.file)fail(lab.courseId,'산출물 파일을 첨부하세요.');
+ }
+ await db.submission.upsert({where:{enrollmentId_labId:{enrollmentId:enrollment.id,labId:lab.id}},create:{enrollmentId:enrollment.id,labId:lab.id,content,url,file:file?{create:file}:undefined},update:{content,url,file:file?{upsert:{create:file,update:file}}:undefined,status:'PENDING',feedback:'',reviewedBy:null,reviewedAt:null}});
  revalidatePath(`/course/${lab.courseId}`);revalidatePath('/admin/learning');redirect(`/course/${lab.courseId}?saved=lab`);
 }
 export async function submitQuiz(form:FormData){

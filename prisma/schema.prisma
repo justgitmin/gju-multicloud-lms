@@ -126,6 +126,7 @@ model Submission {
  url String?
  status SubmissionStatus @default(PENDING)
  feedback String @default("")
+ file SubmissionFile?
  reviewedBy String?
  reviewedAt DateTime?
  updatedAt DateTime @updatedAt
@@ -193,4 +194,11 @@ model AccountAudit {
  event String
  createdAt DateTime @default(now())
  @@index([targetUserId,createdAt])
+}
+
+model SubmissionFile {
+ submissionId String @id
+ name String
+ data Bytes
+ submission Submission @relation(fields:[submissionId],references:[id],onDelete:Cascade)
 }
