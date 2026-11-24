@@ -1,4 +1,5 @@
 'use server';
+import {submissionCourses} from '../lib/submission-courses';
 import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
 import {Prisma} from '@prisma/client';
@@ -32,6 +33,7 @@ export async function login(form:FormData){
 export async function logout(){await destroySession();revalidatePath('/', 'layout');redirect('/login');}
 export async function enroll(form:FormData){
  const user=await requireUser();const courseId=value(form,'courseId');
+ if(submissionCourses.has(courseId))fail('/classroom','이 과정은 운영자가 수강 명단을 확인한 후 배정합니다.');
  const course=await db.course.findFirst({where:{id:courseId,published:true}});
  if(!course)fail('/classroom','신청할 수 없는 과정입니다.');
  await db.enrollment.upsert({where:{userId_courseId:{userId:user.id,courseId}},create:{userId:user.id,courseId},update:{}});

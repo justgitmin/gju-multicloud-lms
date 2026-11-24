@@ -1,0 +1,7 @@
+BEGIN;
+CREATE TABLE "SubmissionFile" (
+    "submissionId" TEXT PRIMARY KEY REFERENCES "Submission"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    "name" TEXT NOT NULL,
+    "data" BYTEA NOT NULL
+);
+COMMIT;
