@@ -37,6 +37,9 @@
     "typescript": "^5.9.0"
   },
   "overrides": {
-    "deepmerge-ts": "^8.0.0"
+    "deepmerge-ts": "^8.0.0",
+    "@prisma/config": {
+      "effect": "3.22.1"
+    }
   }
 }
