@@ -1,7 +1,7 @@
 import {PortalHeader,PortalFooter} from '../../components/PortalChrome';
 import ReviewForm from './ReviewForm';import {requireAdmin} from '../../../lib/auth';import {db} from '../../../lib/db';import {results} from '../../../lib/results';
 export const dynamic='force-dynamic';
-export default async function Learning({searchParams}:{searchParams:Promise<{error?:string;reviewed?:string}>}){await requireAdmin();const {error,reviewed}=await searchParams;const enrollments=await db.enrollment.findMany({include:{user:{select:{name:true,studentNumber:true}},course:{select:{title:true}}},take:200,orderBy:{id:'desc'}});const summaries=await Promise.all(enrollments.map(e=>results(e.id)));const submissions=await db.submission.findMany({include:{lab:true,file:{select:{name:true}},enrollment:{include:{user:{select:{id:true,name:true,studentNumber:true}},course:{select:{title:true}}}}},orderBy:[{updatedAt:'desc'},{id:'desc'}]});
+export default async function Learning({searchParams}:{searchParams:Promise<{error?:string;reviewed?:string}>}){await requireAdmin();const {error,reviewed}=await searchParams;const enrollments=await db.enrollment.findMany({where:{status:'APPROVED'},include:{user:{select:{name:true,studentNumber:true}},course:{select:{title:true}}},take:200,orderBy:{id:'desc'}});const summaries=await Promise.all(enrollments.map(e=>results(e.id)));const submissions=await db.submission.findMany({include:{lab:true,file:{select:{name:true}},enrollment:{include:{user:{select:{id:true,name:true,studentNumber:true}},course:{select:{title:true}}}}},orderBy:[{updatedAt:'desc'},{id:'desc'}]});
 const groups=new Map<string,typeof submissions>();
 for(const submission of submissions){
  const id=submission.enrollment.user.id;
