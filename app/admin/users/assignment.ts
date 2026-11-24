@@ -28,3 +28,20 @@ export async function assignCourses(form:FormData){
  query.set('assignment','saved');
  redirect('/admin/users?'+query);
 }
+
+export async function revokeCourse(form:FormData){
+ await requireAdmin();
+ const userId=String(form.get('userId')??'');
+ const courseId=String(form.get('courseId')??'');
+ const query=new URLSearchParams({q:String(form.get('q')??'').slice(0,100)});
+ const changed=await db.enrollment.updateMany({
+  where:{userId,courseId,status:'APPROVED',user:{role:'STUDENT'}},
+  data:{status:'REJECTED'}
+ });
+ revalidatePath('/admin/users');
+ revalidatePath('/admin');
+ revalidatePath('/classroom');
+ revalidatePath('/course/[id]','page');
+ query.set('assignment',changed.count===1?'revoked':'invalid');
+ redirect('/admin/users?'+query);
+}
