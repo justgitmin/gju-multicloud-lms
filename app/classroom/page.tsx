@@ -13,7 +13,7 @@ export default async function Classroom({searchParams}:{searchParams:Promise<{er
  return <><PortalHeader active="classroom"/><main id="portal-content" className="portal-main"><section className="classhero"><div className="eyebrow">MY CLASSROOM</div><h1>한 걸음씩, 함께 성장해요.</h1><p>{user.name}님의 학습 여정과 다음 도전을 확인하세요.</p></section>{error&&<p role="alert" className="error">{error}</p>}
  {courses.map(course=>{const application=course.enrollments[0];if(submissionCourses.has(course.id)){
  if(application?.status!=='APPROVED')return application?<article className="card" key={course.id}><h2>{course.title}</h2><p>{statuses[application.status]}</p></article>:null;
- return <article className="card" key={course.id}><h2>{course.title}</h2><Link className="button" href={`/course/${course.id}`}>산출물 제출·확인 →</Link></article>;
+ return <article className="card" key={course.id}><h2>{course.title}</h2><Link className="button" href={`/course/${course.id}`}>{course.id==='gju-digital-twin-2026'?'강의·교안·산출물 →':'산출물 제출·확인 →'}</Link></article>;
  }return application?.status==='APPROVED'?<Journey key={course.id} course={course} enrollment={application}/>:<article className="card" key={course.id}><div className="eyebrow">MULTI-CLOUD PROGRAM</div><h3>{course.title}</h3>{application?<div className="status">{statuses[application.status]}</div>:<><p>신청 후 운영자가 확인하면 수강 권한이 부여됩니다.</p><form action={enroll}><input type="hidden" name="courseId" value={course.id}/><button className="button">수강신청 →</button></form></>}</article>})}
  {courses.length===0&&<aside>현재 신청 가능한 과정이 없습니다.</aside>}</main><PortalFooter/></>;
 }
