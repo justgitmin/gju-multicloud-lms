@@ -35,11 +35,13 @@ try{
  response=await fetch(base+'/login',{headers:{cookie:studentCookie},redirect:'manual'});check(response.status===307&&response.headers.get('location')==='/classroom','Authenticated student skips login form');
  response=await fetch(base+'/');check(!(await response.text()).includes('테스트 학생'),'Guest home does not leak another user identity');
  response=await fetch(base+'/admin',{headers:{cookie:studentCookie},redirect:'manual'});check(response.status===307,'Student cannot access admin page');
- response=await action('/classroom',{courseId:'gju-multicloud-2026'},studentCookie);let application=await prisma.enrollment.findFirstOrThrow({where:{user:{email:'student@example.invalid'}}});check(application.status==='PENDING','Enrollment starts pending');
- response=await fetch(base+'/learn/nhn-01',{headers:{cookie:studentCookie},redirect:'manual'});check(response.status===307,'Pending student cannot access lesson');
+ check(await prisma.enrollment.count()===0,'Registration does not assign a course');
+ response=await fetch(base+'/classroom',{headers:{cookie:studentCookie}});let classroom=await response.text();check(classroom.includes('아직 배정된 과정이 없습니다.')&&!classroom.includes('name="courseId"'),'Unassigned student has no self-enrollment form');
+ response=await fetch(base+'/learn/nhn-01',{headers:{cookie:studentCookie},redirect:'manual'});check(response.status===307,'Unassigned student cannot access lesson');
  response=await action('/login',{email:'admin@example.invalid',password:adminPassword});const adminCookie=response.headers.get('set-cookie')?.split(';')[0];check(!!adminCookie,'Admin login succeeds');
  response=await fetch(base+'/login',{headers:{cookie:adminCookie},redirect:'manual'});check(response.status===307&&response.headers.get('location')==='/admin','Authenticated admin skips login form');
- response=await action('/admin',{enrollmentId:application.id,status:'APPROVED'},adminCookie);application=await prisma.enrollment.findUniqueOrThrow({where:{id:application.id}});check(application.status==='APPROVED','Admin approves enrollment');
+ const student=await prisma.user.findUniqueOrThrow({where:{email:'student@example.invalid'}});
+ response=await action('/admin/users',{userId:student.id,courseId:'gju-multicloud-2026',q:''},adminCookie);const application=await prisma.enrollment.findFirstOrThrow({where:{userId:student.id,courseId:'gju-multicloud-2026'}});check(response.status===303&&application.status==='APPROVED','Admin assigns an approved course');
  response=await fetch(base+'/course/gju-multicloud-2026',{headers:{cookie:studentCookie}});let html=await response.text();check(response.ok&&html.includes('실습 제출')&&html.includes('/guide/nhn'),'Approved student sees NHN guide, labs and quizzes');
  response=await fetch(base+'/guide/nhn',{headers:{cookie:studentCookie}});check(response.ok&&(await response.text()).includes('MobaXterm'),'NHN SSH guide renders');
  response=await fetch(base+'/guide/aws',{headers:{cookie:studentCookie}});check(response.ok&&(await response.text()).includes('Session Manager'),'AWS browser guide renders');
