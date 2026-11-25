@@ -31,13 +31,9 @@ export async function login(form:FormData){
  revalidatePath('/', 'layout');redirect(user.mustChangePassword?'/mypage/password':user.role==='ADMIN'?'/admin':'/classroom');
 }
 export async function logout(){await destroySession();revalidatePath('/', 'layout');redirect('/login');}
-export async function enroll(form:FormData){
- const user=await requireUser();const courseId=value(form,'courseId');
- if(submissionCourses.has(courseId))fail('/classroom','이 과정은 운영자가 수강 명단을 확인한 후 배정합니다.');
- const course=await db.course.findFirst({where:{id:courseId,published:true}});
- if(!course)fail('/classroom','신청할 수 없는 과정입니다.');
- await db.enrollment.upsert({where:{userId_courseId:{userId:user.id,courseId}},create:{userId:user.id,courseId},update:{}});
- revalidatePath('/classroom');redirect('/classroom');
+export async function enroll(_form:FormData){
+ await requireUser();
+ fail('/classroom','관리자가 수강 명단을 확인한 후 과정을 배정합니다.');
 }
 export async function reviewEnrollment(form:FormData){
  await requireAdmin();const id=value(form,'enrollmentId');const status=value(form,'status');
