@@ -8,6 +8,18 @@ import {requireUser} from '../../../lib/auth';import {db} from '../../../lib/db'
 export const dynamic='force-dynamic';
 export default async function Course({params,searchParams}:{params:Promise<{id:string}>,searchParams:Promise<{error?:string,saved?:string,score?:string}>}){
  const user=await requireUser();const {id}=await params;const query=await searchParams;
+ if(user.role==='ADMIN'){
+ const course=await db.course.findUnique({where:{id},include:{labs:{orderBy:{position:'asc'}},lessons:{orderBy:{position:'asc'}}}});
+ if(!course)redirect('/classroom');
+ return <><PortalHeader active="classroom"/><main id="portal-content" className="portal-main">
+ <section className="classhero"><h1>{course.title}</h1><p>관리자 과정 미리보기 · {course.published?'공개 과정':'비공개 과정'}</p></section>
+ {course.id==='gju-digital-twin-2026'&&<DigitalTwinLessons/>}
+ <h2>학습 영상</h2>{course.lessons.map(lesson=><p key={lesson.id}>{lesson.title}</p>)}
+ <h2>제출 과제 안내</h2>{course.labs.map(lab=><article className="card" key={lab.id}><h3>{lab.title}</h3><p className="preline">{lab.instructions}</p></article>)}
+ <p><Link href="/admin/learning">학생 제출물 검토·다운로드 →</Link></p>
+ <p><Link href="/classroom">전체 과정으로 →</Link></p>
+ </main><PortalFooter/></>;
+ }
  const enrollment=await db.enrollment.findUnique({where:{userId_courseId:{userId:user.id,courseId:id}},include:{course:{include:{lessons:{orderBy:{position:'asc'}},labs:{orderBy:{position:'asc'}},quizzes:{select:{id:true,title:true,version:true,questions:true},orderBy:{id:'asc'}}}},progress:true,submissions:{select:{id:true,labId:true,status:true,feedback:true,content:true,url:true,file:{select:{name:true}}}},attempts:{select:{quizId:true,version:true,score:true,createdAt:true},orderBy:{createdAt:'desc'}}}});
  if(!enrollment||enrollment.status!=='APPROVED'||!enrollment.course.published)redirect('/classroom');
  const summary=await results(enrollment.id);const course=enrollment.course;const submissionOnly=submissionCourses.has(course.id);
